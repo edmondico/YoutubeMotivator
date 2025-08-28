@@ -109,7 +109,7 @@ export const AdvancedTaskModal = ({ isOpen, onClose, onAddTask, scheduledDate, i
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className={`${bgModal} rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto`}
+          className={`${bgModal} rounded-2xl shadow-2xl max-w-6xl w-full h-[95vh] flex flex-col`}
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
         >
           {/* Header */}
@@ -131,181 +131,192 @@ export const AdvancedTaskModal = ({ isOpen, onClose, onAddTask, scheduledDate, i
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            {/* Título */}
-            <div>
-              <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                📝 Título de la tarea *
-              </label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                className={`w-full px-4 py-3 border ${border} ${inputBg} ${textPrimary} rounded-xl focus:ring-2 ${ringFocus} focus:border-transparent transition-colors`}
-                placeholder="Ej: Grabar intro del video de Pokémon"
-                required
-              />
-            </div>
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+            <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
+              {/* Columna izquierda */}
+              <div className="space-y-6">
+                {/* Título */}
+                <div>
+                  <label className={`block text-lg font-semibold ${textPrimary} mb-3`}>
+                    📝 Título de la tarea *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                    className={`w-full px-6 py-4 text-lg border-2 ${border} ${inputBg} ${textPrimary} rounded-xl focus:ring-2 ${ringFocus} focus:border-transparent transition-colors`}
+                    placeholder="Ej: Grabar intro del video de Pokémon"
+                    required
+                  />
+                </div>
 
-            {/* Descripción */}
-            <div>
-              <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                📄 Descripción (opcional)
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                className={`w-full px-4 py-3 border ${border} ${inputBg} ${textPrimary} rounded-xl focus:ring-2 ${ringFocus} focus:border-transparent transition-colors resize-none`}
-                rows={3}
-                placeholder="Detalles adicionales sobre la tarea..."
-              />
-            </div>
+                {/* Descripción */}
+                <div>
+                  <label className={`block text-lg font-semibold ${textPrimary} mb-3`}>
+                    📄 Descripción (opcional)
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    className={`w-full px-6 py-4 text-base border-2 ${border} ${inputBg} ${textPrimary} rounded-xl focus:ring-2 ${ringFocus} focus:border-transparent transition-colors resize-none`}
+                    rows={6}
+                    placeholder="Detalles adicionales sobre la tarea..."
+                  />
+                </div>
 
-            {/* Tiempo y Categoría en Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Tiempo Estimado */}
-              <div>
-                <label className={`block text-sm font-medium ${textSecondary} mb-3`}>
-                  <Clock className="w-4 h-4 inline mr-1" />
-                  Tiempo estimado
-                </label>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="range"
-                      min="15"
-                      max="480"
-                      step="15"
-                      value={formData.estimatedDuration}
-                      onChange={(e) => setFormData(prev => ({ ...prev, estimatedDuration: parseInt(e.target.value) }))}
-                      className={`flex-1 h-2 ${isDark ? 'bg-gray-600' : 'bg-gray-200'} rounded-lg appearance-none cursor-pointer slider`}
-                    />
-                    <span className={`text-sm font-medium ${isDark ? 'text-purple-300 bg-purple-900/50' : 'text-purple-600 bg-purple-50'} px-3 py-1 rounded-full min-w-[70px] text-center`}>
-                      {formData.estimatedDuration}min
-                    </span>
+                {/* Tiempo Estimado */}
+                <div>
+                  <label className={`block text-lg font-semibold ${textPrimary} mb-4`}>
+                    <Clock className="w-5 h-5 inline mr-2" />
+                    Tiempo estimado
+                  </label>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="range"
+                        min="15"
+                        max="480"
+                        step="15"
+                        value={formData.estimatedDuration}
+                        onChange={(e) => setFormData(prev => ({ ...prev, estimatedDuration: parseInt(e.target.value) }))}
+                        className={`flex-1 h-3 ${isDark ? 'bg-gray-600' : 'bg-gray-200'} rounded-lg appearance-none cursor-pointer slider`}
+                      />
+                      <span className={`text-lg font-bold ${isDark ? 'text-purple-300 bg-purple-900/50' : 'text-purple-600 bg-purple-50'} px-4 py-2 rounded-xl min-w-[90px] text-center`}>
+                        {formData.estimatedDuration}min
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      {timePresets.map((time) => (
+                        <button
+                          key={time}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, estimatedDuration: time }))}
+                          className={`px-4 py-2 text-sm font-medium rounded-xl border-2 transition-colors ${
+                            formData.estimatedDuration === time
+                              ? isDark ? 'bg-purple-500 border-purple-500 text-white' : 'bg-purple-100 border-purple-300 text-purple-700'
+                              : `${isDark ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'} ${textSecondary} ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`
+                          }`}
+                        >
+                          {time}min
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {timePresets.map((time) => (
+                </div>
+
+                {/* Fecha de vencimiento */}
+                <div>
+                  <label className={`block text-lg font-semibold ${textPrimary} mb-3`}>
+                    <Calendar className="w-5 h-5 inline mr-2" />
+                    Fecha límite (opcional)
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.dueDate}
+                    onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
+                    className={`w-full px-6 py-4 text-lg border-2 ${border} ${inputBg} ${textPrimary} rounded-xl focus:ring-2 ${ringFocus} focus:border-transparent transition-colors`}
+                  />
+                </div>
+              </div>
+
+              {/* Columna derecha */}
+              <div className="space-y-6">
+                {/* Categoría */}
+                <div>
+                  <label className={`block text-lg font-semibold ${textPrimary} mb-4`}>
+                    <Tag className="w-5 h-5 inline mr-2" />
+                    Categoría
+                  </label>
+                  <div className="grid grid-cols-1 gap-3">
+                    {categoryOptions.map((category) => (
                       <button
-                        key={time}
+                        key={category.value}
                         type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, estimatedDuration: time }))}
-                        className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                          formData.estimatedDuration === time
-                            ? isDark ? 'bg-purple-500 border-purple-500 text-white' : 'bg-purple-100 border-purple-300 text-purple-700'
-                            : `${isDark ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'} ${textSecondary} ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`
+                        onClick={() => setFormData(prev => ({ ...prev, category: category.value as any }))}
+                        className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left ${
+                          formData.category === category.value
+                            ? isDark ? 'border-purple-400 bg-purple-900/30' : 'border-purple-300 bg-purple-50'
+                            : `${border} ${isDark ? 'hover:border-gray-500 bg-gray-700' : 'hover:border-gray-300 bg-gray-50'}`
                         }`}
                       >
-                        {time}min
+                        <span className="text-2xl">{category.emoji}</span>
+                        <div className="flex-1">
+                          <div className={`font-semibold text-base ${textPrimary}`}>{category.label}</div>
+                          <div className={`text-sm ${textSecondary}`}>+{category.xp} XP base</div>
+                        </div>
                       </button>
                     ))}
                   </div>
                 </div>
-              </div>
 
-              {/* Categoría */}
-              <div>
-                <label className={`block text-sm font-medium ${textSecondary} mb-3`}>
-                  <Tag className="w-4 h-4 inline mr-1" />
-                  Categoría
-                </label>
-                <div className="grid grid-cols-1 gap-2">
-                  {categoryOptions.map((category) => (
-                    <button
-                      key={category.value}
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, category: category.value as any }))}
-                      className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
-                        formData.category === category.value
-                          ? isDark ? 'border-purple-400 bg-purple-900/30' : 'border-purple-300 bg-purple-50'
-                          : `${border} ${isDark ? 'hover:border-gray-500 bg-gray-700' : 'hover:border-gray-300 bg-gray-50'}`
-                      }`}
-                    >
-                      <span className="text-xl">{category.emoji}</span>
-                      <div className="flex-1">
-                        <div className={`font-medium ${textPrimary}`}>{category.label}</div>
-                        <div className={`text-xs ${textSecondary}`}>+{category.xp} XP base</div>
-                      </div>
-                    </button>
-                  ))}
+                {/* Prioridad */}
+                <div>
+                  <label className={`block text-lg font-semibold ${textPrimary} mb-4`}>
+                    <Flag className="w-5 h-5 inline mr-2" />
+                    Prioridad
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {priorityOptions.map((priority) => (
+                      <button
+                        key={priority.value}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, priority: priority.value as any }))}
+                        className={`flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                          formData.priority === priority.value
+                            ? isDark ? 'border-purple-400 bg-purple-900/30' : 'border-purple-300 bg-purple-100'
+                            : `${border} ${isDark ? 'hover:border-gray-500 bg-gray-700' : 'hover:border-gray-300 bg-gray-50'}`
+                        }`}
+                      >
+                        <span className="text-xl">{priority.emoji}</span>
+                        <span className={`font-semibold text-base ${textPrimary}`}>{priority.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* XP Preview */}
+                <div className={`${isDark ? 'bg-yellow-900/50 border-yellow-700' : 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200'} border-2 rounded-xl p-6`}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-3xl">⭐</span>
+                    <span className={`font-bold text-lg ${textPrimary}`}>Recompensa XP</span>
+                  </div>
+                  <div className={`text-base ${textSecondary} mb-2`}>
+                    Esta tarea otorgará al completarse:
+                  </div>
+                  <div className={`text-3xl font-bold ${isDark ? 'text-yellow-400' : 'text-yellow-600'} mb-2`}>
+                    {Math.round(
+                      (categoryOptions.find(cat => cat.value === formData.category)?.xp || 10) *
+                      ({ low: 1, medium: 1.2, high: 1.5, urgent: 2 }[formData.priority]) *
+                      Math.max(0.5, formData.estimatedDuration / 60)
+                    )} XP
+                  </div>
+                  <div className={`text-sm ${textSecondary}`}>
+                    Base: {categoryOptions.find(cat => cat.value === formData.category)?.xp || 10} XP • 
+                    Prioridad: ×{({ low: 1, medium: 1.2, high: 1.5, urgent: 2 }[formData.priority])} • 
+                    Tiempo: ×{Math.max(0.5, formData.estimatedDuration / 60).toFixed(1)}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Prioridad */}
-            <div>
-              <label className={`block text-sm font-medium ${textSecondary} mb-3`}>
-                <Flag className="w-4 h-4 inline mr-1" />
-                Prioridad
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {priorityOptions.map((priority) => (
-                  <button
-                    key={priority.value}
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, priority: priority.value as any }))}
-                    className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
-                      formData.priority === priority.value
-                        ? isDark ? 'border-purple-400 bg-purple-900/30' : 'border-purple-300 bg-purple-100'
-                        : `${border} ${isDark ? 'hover:border-gray-500 bg-gray-700' : 'hover:border-gray-300 bg-gray-50'}`
-                    }`}
-                  >
-                    <span>{priority.emoji}</span>
-                    <span className={`font-medium text-sm ${textPrimary}`}>{priority.label}</span>
-                  </button>
-                ))}
+            {/* Botones - pegados al fondo */}
+            <div className={`p-6 border-t ${border} bg-opacity-50 ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className={`flex-1 px-8 py-4 text-lg border-2 ${border} ${textPrimary} rounded-xl ${hoverBg} font-semibold transition-colors`}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-8 py-4 text-lg bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl hover:shadow-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!formData.title.trim()}
+                >
+                  Crear Tarea
+                </button>
               </div>
-            </div>
-
-            {/* Fecha de vencimiento */}
-            <div>
-              <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                <Calendar className="w-4 h-4 inline mr-1" />
-                Fecha límite (opcional)
-              </label>
-              <input
-                type="date"
-                value={formData.dueDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
-                className={`w-full px-4 py-3 border ${border} ${inputBg} ${textPrimary} rounded-xl focus:ring-2 ${ringFocus} focus:border-transparent transition-colors`}
-              />
-            </div>
-
-            {/* XP Preview */}
-            <div className={`${isDark ? 'bg-yellow-900/50 border-yellow-700' : 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200'} border rounded-xl p-4`}>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-2xl">⭐</span>
-                <span className={`font-semibold ${textPrimary}`}>Recompensa XP</span>
-              </div>
-              <div className={`text-sm ${textSecondary}`}>
-                Esta tarea otorgará{' '}
-                <span className={`font-bold ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`}>
-                  {Math.round(
-                    (categoryOptions.find(cat => cat.value === formData.category)?.xp || 10) *
-                    ({ low: 1, medium: 1.2, high: 1.5, urgent: 2 }[formData.priority]) *
-                    Math.max(0.5, formData.estimatedDuration / 60)
-                  )} XP
-                </span>{' '}
-                al completarse
-              </div>
-            </div>
-
-            {/* Botones */}
-            <div className="flex items-center gap-3 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className={`flex-1 px-6 py-3 border ${border} ${textPrimary} rounded-xl ${hoverBg} font-medium transition-colors`}
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl hover:shadow-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={!formData.title.trim()}
-              >
-                Crear Tarea
-              </button>
             </div>
           </form>
         </motion.div>
