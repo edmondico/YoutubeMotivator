@@ -4,7 +4,12 @@
       "Bash(npm run build:*)",
       "Bash(node:*)",
       "Bash(npm run dev:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(npm outdated)",
+      "Bash(npm update)",
+      "Bash(npm install:*)",
+      "Bash(npm audit:*)"
     ],
     "deny": [],
     "ask": []
