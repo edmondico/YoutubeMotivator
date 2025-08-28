@@ -242,6 +242,14 @@ export const useCachedYouTubeStats = (channelId?: string) => {
         return;
       }
 
+      // Temporary fix: disable all API calls to break infinite loop
+      console.log('YouTube stats loading temporarily disabled');
+      setLoading(false);
+      setQuotaExceeded(true);
+      setError('Sistema en mantenimiento - estadísticas temporalmente deshabilitadas');
+      return;
+
+      /* Commented out to prevent infinite loops and API spam
       setLoading(true);
       setError(null);
 
@@ -282,6 +290,7 @@ export const useCachedYouTubeStats = (channelId?: string) => {
       } finally {
         setLoading(false);
       }
+      */
     };
 
     loadData();

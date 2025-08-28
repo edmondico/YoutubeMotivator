@@ -20,6 +20,14 @@ export const useOnboarding = () => {
         return;
       }
 
+      // Temporary fix: disable onboarding check to break infinite loop
+      // Skip database check due to 406 errors and infinite loops
+      console.log('Onboarding check temporarily disabled');
+      setNeedsOnboarding(false);
+      setIsLoading(false);
+      return;
+
+      /* Commented out to prevent infinite loops
       try {
         const { data: goals, error } = await supabase
           .from('user_goals')
@@ -41,10 +49,11 @@ export const useOnboarding = () => {
       } finally {
         setIsLoading(false);
       }
+      */
     };
 
     checkOnboardingStatus();
-  }, [user, supabase]);
+  }, [user?.id]);
 
   const redirectToOnboarding = () => {
     router.push('/onboarding');
