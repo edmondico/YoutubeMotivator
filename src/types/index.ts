@@ -35,6 +35,7 @@ export interface YouTubeStats {
   channelId: string;
   customUrl: string;
   weeklySubGrowth?: number;
+  videoCount?: number;
 }
 
 export interface UserStats {
@@ -88,7 +89,7 @@ export interface Achievement {
   id: string;
   title: string;
   description: string;
-  icon: string;
+  icon: string | React.ReactElement;
   unlocked: boolean;
   category: 'tasks' | 'youtube' | 'general';
   getProgress?: () => number; // Devuelve un valor de 0 a 100

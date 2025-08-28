@@ -16,6 +16,8 @@ import { GoalProgressCard } from '@/components/GoalProgressCard';
 import { useTasks } from '@/hooks/useTasks';
 import { useUserStats } from '@/hooks/useUserStats';
 import { useAppConfig } from '@/hooks/useAppConfig';
+import { useAuth } from '@/components/AuthProvider';
+import { LoginForm } from '@/components/LoginForm';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Filter, Calendar, Trophy, BarChart3 } from 'lucide-react';
 import { Task } from '@/types';
@@ -26,7 +28,7 @@ interface DashboardViewProps {
   handleTaskUpdate: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt'>) => void;
-  completeTask: (xp: number) => boolean;
+  completeTask: (xp: number) => Promise<boolean>;
 }
 
 const DashboardView = ({ tasks, handleTaskUpdate, deleteTask, addTask, completeTask }: DashboardViewProps) => {
@@ -35,10 +37,10 @@ const DashboardView = ({ tasks, handleTaskUpdate, deleteTask, addTask, completeT
   const { config } = useAppConfig();
   const isDark = config.theme.darkMode;
 
-  const handleTaskUpdateWithCelebration = (id: string, updates: Partial<Task>) => {
+  const handleTaskUpdateWithCelebration = async (id: string, updates: Partial<Task>) => {
     const task = tasks.find((t: Task) => t.id === id);
     if (task && updates.status === 'completed' && task.status !== 'completed') {
-      completeTask(task.xpReward);
+      await completeTask(task.xpReward);
       setShowCelebration(true);
       setTimeout(() => setShowCelebration(false), 3000);
     }
@@ -272,12 +274,28 @@ const AnalyticsView = ({ tasks, isDark }: { tasks: Task[], isDark: boolean }) =>
 };
 
 export default function Home() {
+  const { user, loading } = useAuth();
   const { tasks, addTask, updateTask, deleteTask } = useTasks();
   const { completeTask } = useUserStats();
   const { config } = useAppConfig();
   const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
 
   const isDark = config.theme.darkMode;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginForm />;
+  }
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${

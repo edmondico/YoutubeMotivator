@@ -70,7 +70,7 @@ const VideoUploadModal = ({ isOpen, onClose, onVideoUploaded, isDark }: VideoUpl
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           className={`${bgModal} rounded-2xl shadow-2xl max-w-lg w-full`}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e: React.MouseEvent) => e.stopPropagation()}
         >
           <div className="p-6">
             <div className="text-center mb-6">

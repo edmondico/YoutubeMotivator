@@ -37,7 +37,7 @@ export const AchievementModal = ({ isOpen, onClose, achievement, isDark }: Achie
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           className={`${bgModal} rounded-2xl shadow-2xl max-w-md w-full`}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e: React.MouseEvent) => e.stopPropagation()}
         >
           {/* Header */}
           <div className={`flex items-center justify-between p-6 border-b ${border}`}>

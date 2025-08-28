@@ -123,7 +123,7 @@ export const NotificationCenter = () => {
                                 {notification.title}
                               </h4>
                               <button
-                                onClick={(e) => {
+                                onClick={(e: React.MouseEvent) => {
                                   e.stopPropagation();
                                   removeNotification(notification.id);
                                 }}
@@ -144,7 +144,7 @@ export const NotificationCenter = () => {
                               
                               {notification.action && (
                                 <button
-                                  onClick={(e) => {
+                                  onClick={(e: React.MouseEvent) => {
                                     e.stopPropagation();
                                     notification.action!.handler();
                                     setIsOpen(false);

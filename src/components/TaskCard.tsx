@@ -121,3 +121,4 @@ export const TaskCard = ({ task, onUpdateTask, onDeleteTask, isDark }: TaskCardP
       </div>
     </motion.div>
   );
+};

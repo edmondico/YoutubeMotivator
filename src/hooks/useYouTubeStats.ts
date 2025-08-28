@@ -12,6 +12,10 @@ const MOCK_DATA: YouTubeStats = {
   lastVideoSubGrowth: 45,
   totalViews: 125000,
   averageViewsPerVideo: 2500,
+  channelId: 'UCi22Ce1p-tDw6e7_WfsjPFg',
+  customUrl: '@PokeBim',
+  weeklySubGrowth: 35,
+  videoCount: 50,
 };
 
 export const useYouTubeStats = () => {

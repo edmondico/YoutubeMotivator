@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { UserStats } from '@/types';
+import { createClient } from '@/utils/supabase/client';
 
 const INITIAL_STATS: UserStats = {
   level: 1,
@@ -14,67 +15,138 @@ const INITIAL_STATS: UserStats = {
 
 export const useUserStats = () => {
   const [stats, setStats] = useState<UserStats>(INITIAL_STATS);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
 
   useEffect(() => {
-    const savedStats = localStorage.getItem('pokebim-user-stats');
-    if (savedStats) {
-      setStats(JSON.parse(savedStats));
-    }
+    loadUserStats();
   }, []);
 
-  const saveStats = (newStats: UserStats) => {
-    setStats(newStats);
-    localStorage.setItem('pokebim-user-stats', JSON.stringify(newStats));
+  const loadUserStats = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        setStats(INITIAL_STATS);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading user stats:', error);
+        return;
+      }
+
+      if (!data) {
+        await createUserProfile(user.id);
+        setStats(INITIAL_STATS);
+        return;
+      }
+
+      setStats({
+        level: data.level || 1,
+        currentXp: data.current_xp || 0,
+        xpToNextLevel: data.xp_to_next_level || 100,
+        completedTasks: data.completed_tasks || 0,
+        streak: data.streak || 0,
+        totalVideosMade: data.total_videos_made || 0,
+      });
+    } catch (error) {
+      console.error('Error loading user stats:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const addXp = (xp: number) => {
+  const createUserProfile = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .insert([{
+          id: userId,
+          level: 1,
+          current_xp: 0,
+          xp_to_next_level: 100,
+          completed_tasks: 0,
+          streak: 0,
+          total_videos_made: 0,
+        }]);
+
+      if (error) {
+        console.error('Error creating user profile:', error);
+      }
+    } catch (error) {
+      console.error('Error creating user profile:', error);
+    }
+  };
+
+  const saveStats = async (newStats: UserStats) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({
+          level: newStats.level,
+          current_xp: newStats.currentXp,
+          xp_to_next_level: newStats.xpToNextLevel,
+          completed_tasks: newStats.completedTasks,
+          streak: newStats.streak,
+          total_videos_made: newStats.totalVideosMade,
+        })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('Error updating user stats:', error);
+        return;
+      }
+
+      setStats(newStats);
+    } catch (error) {
+      console.error('Error updating user stats:', error);
+    }
+  };
+
+  const addXp = async (xp: number) => {
     const newXp = stats.currentXp + xp;
     let newLevel = stats.level;
     let xpToNext = stats.xpToNextLevel;
 
-    // Verificar si sube de nivel
     while (newXp >= xpToNext) {
       newLevel++;
-      xpToNext = newLevel * 100; // Cada nivel requiere más XP
+      xpToNext = newLevel * 100;
     }
 
-    saveStats({
+    const newStats = {
       ...stats,
       currentXp: newXp,
       level: newLevel,
       xpToNextLevel: xpToNext,
-    });
+    };
 
-    return newLevel > stats.level; // Retorna true si subió de nivel
+    await saveStats(newStats);
+    return newLevel > stats.level;
   };
 
-  const completeTask = (xpReward: number) => {
-    const today = new Date().toDateString();
-    const lastActivityDate = localStorage.getItem('pokebim-last-activity-date');
-    
-    // Actualizar contador de tareas diarias
-    let dailyTasksCompleted = parseInt(localStorage.getItem('pokebim-daily-tasks-completed') || '0');
-    
-    if (lastActivityDate !== today) {
-      // Es un nuevo día, resetear contador
-      dailyTasksCompleted = 1;
-      localStorage.setItem('pokebim-last-activity-date', today);
-    } else {
-      // Mismo día, incrementar contador
-      dailyTasksCompleted += 1;
-    }
-    
-    localStorage.setItem('pokebim-daily-tasks-completed', dailyTasksCompleted.toString());
-
+  const completeTask = async (xpReward: number) => {
     const newXp = stats.currentXp + xpReward;
     let newLevel = stats.level;
     let xpToNext = stats.xpToNextLevel;
     let completedTasksCount = stats.completedTasks + 1;
 
-    // Verificar si sube de nivel
     while (newXp >= xpToNext) {
       newLevel++;
-      xpToNext = newLevel * 100; // Cada nivel requiere más XP
+      xpToNext = newLevel * 100;
     }
 
     const updatedStats = {
@@ -85,57 +157,36 @@ export const useUserStats = () => {
       completedTasks: completedTasksCount,
     };
 
-    saveStats(updatedStats);
-    return newLevel > stats.level; // Retorna true si subió de nivel
+    await saveStats(updatedStats);
+    return newLevel > stats.level;
   };
 
-  const updateStreak = () => {
-    const today = new Date().toDateString();
-    const lastActivity = localStorage.getItem('pokebim-last-activity');
-    
-    if (lastActivity === today) {
-      return; // Ya se actualizó hoy
-    }
-    
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    if (lastActivity === yesterday.toDateString()) {
-      // Continuó la racha
-      saveStats({
-        ...stats,
-        streak: stats.streak + 1,
-      });
-    } else {
-      // Se rompió la racha
-      saveStats({
-        ...stats,
-        streak: 1,
-      });
-    }
-    
-    localStorage.setItem('pokebim-last-activity', today);
+  const updateStreak = async (streak?: number) => {
+    const updatedStats = {
+      ...stats,
+      streak: streak !== undefined ? streak : stats.streak + 1,
+    };
+
+    await saveStats(updatedStats);
   };
 
-  const addVideo = () => {
-    saveStats({
+  const addVideo = async () => {
+    const updatedStats = {
       ...stats,
       totalVideosMade: stats.totalVideosMade + 1,
-    });
-    addXp(200); // Bonus XP por subir video
-  };
-
-  // Función para actualizar vistas diarias (simulación)
-  const updateDailyViews = (views: number) => {
-    localStorage.setItem('pokebim-daily-views', views.toString());
+    };
+    
+    await saveStats(updatedStats);
+    await addXp(200);
   };
 
   return {
     stats,
+    loading,
     addXp,
     completeTask,
     updateStreak,
     addVideo,
-    updateDailyViews,
+    loadUserStats,
   };
 };
