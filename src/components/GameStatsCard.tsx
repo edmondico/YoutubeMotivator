@@ -32,6 +32,18 @@ export const GameStatsCard = ({ isDark }: { isDark: boolean }) => {
   const bgInner = isDark ? 'bg-gray-700' : 'bg-white';
   const bgXpBar = isDark ? 'bg-gray-600' : 'bg-gray-200';
 
+  // Logros de suscriptores procedurales
+  const subscriberMilestones = [1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000];
+  const dynamicSubscriberAchievements: Achievement[] = subscriberMilestones.map((milestone) => ({
+    id: `subs-${milestone}`,
+    title: `¡${milestone} suscriptores!`,
+    description: `Alcanza los ${milestone} suscriptores en tu canal.`,
+    icon: '📈',
+    unlocked: (realStats?.subscriberCount || 0) >= milestone,
+    category: 'youtube',
+    getProgress: () => Math.min(((realStats?.subscriberCount || 0) / milestone) * 100, 100),
+  }));
+
   const achievements: Achievement[] = [
     // Tasks
     {
@@ -144,6 +156,7 @@ export const GameStatsCard = ({ isDark }: { isDark: boolean }) => {
       category: 'general',
       getProgress: () => Math.min((userStats.level / 10) * 100, 100),
     },
+    ...dynamicSubscriberAchievements,
   ];
 
   const getLevelTitle = (level: number) => {
@@ -279,20 +292,7 @@ export const GameStatsCard = ({ isDark }: { isDark: boolean }) => {
         </div>
 
         {/* Motivación del día */}
-        <motion.div
-          animate={{ 
-            background: isDark 
-              ? ['linear-gradient(45deg, #1f2937, #374151)', 'linear-gradient(45deg, #374151, #1f2937)']
-              : ['linear-gradient(45deg, #f3f4f6, #e5e7eb)', 'linear-gradient(45deg, #e5e7eb, #f3f4f6)'],
-          }}
-          transition={{ duration: 2, repeat: Infinity, repeatType: 'reverse' }}
-          className="mt-6 p-4 rounded-lg text-center"
-        >
-          <Target className={`w-5 h-5 ${isDark ? 'text-purple-400' : 'text-purple-600'} mx-auto mb-2`} />
-          <p className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-            &ldquo;¡Cada tarea completada te acerca más a ser un maestro PokéTuber! 🌟&rdquo;
-          </p>
-        </motion.div>
+        {/* Aquí puedes poner otra motivación, o dejarlo vacío para no mostrar la frase eliminada */}
       </motion.div>
       <AchievementModal 
         isOpen={isModalOpen} 
