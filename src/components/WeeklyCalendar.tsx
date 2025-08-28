@@ -37,9 +37,11 @@ interface WeeklyCalendarProps {
   isDark: boolean;
 }
 
-// Time slots from 10:00 to 20:00
+// Time slots: Morning, Midday, Afternoon
 const timeSlots = [
-  '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'
+  { id: 'morning', label: 'Mañana', time: '09:00-13:00' },
+  { id: 'midday', label: 'Mediodía', time: '13:00-17:00' },
+  { id: 'afternoon', label: 'Tarde', time: '17:00-21:00' }
 ];
 
 export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, isDark }: WeeklyCalendarProps) => {
@@ -132,26 +134,31 @@ export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, i
     const activeTaskId = active.id as string;
     const overContainerId = over.id as string;
 
-    // Si se suelta en una franja horaria específica (day-0-10:00)
+    // Si se suelta en una franja horaria específica (day-0-morning)
     if (overContainerId.includes('-') && overContainerId.startsWith('day-')) {
       const parts = overContainerId.split('-');
       if (parts.length >= 3) {
         const dayIndex = parseInt(parts[1]);
-        const timeSlot = parts.slice(2).join('-'); // En caso de que la hora tenga guiones
+        const timeSlotId = parts[2];
         
         const targetDate = weekDays[dayIndex]?.date;
         if (targetDate) {
-          if (timeSlot === 'unscheduled') {
+          if (timeSlotId === 'unscheduled') {
             // Dropped in unscheduled area of a day
             onUpdateTask(activeTaskId, { 
               scheduledDate: targetDate, 
               scheduledTime: undefined 
             });
           } else {
-            // Dropped in a specific time slot
+            // Dropped in a specific time slot - assign a default time for that period
+            let defaultTime = '12:00'; // Default fallback
+            if (timeSlotId === 'morning') defaultTime = '10:00';
+            if (timeSlotId === 'midday') defaultTime = '15:00';
+            if (timeSlotId === 'afternoon') defaultTime = '19:00';
+            
             onUpdateTask(activeTaskId, { 
               scheduledDate: targetDate, 
-              scheduledTime: timeSlot 
+              scheduledTime: defaultTime 
             });
           }
         }
@@ -262,12 +269,18 @@ export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, i
   }, []);
 
   // Helper function to get tasks for a specific time slot
-  const getTasksForTimeSlot = (dayTasks: Task[], timeSlot: string) => {
-    const hour = parseInt(timeSlot.split(':')[0]);
+  const getTasksForTimeSlot = (dayTasks: Task[], timeSlotId: string) => {
     return dayTasks.filter(task => {
       if (!task.scheduledTime) return false;
+      
+      // Map time slots based on hour ranges
       const taskHour = parseInt(task.scheduledTime.split(':')[0]);
-      return taskHour === hour;
+      
+      if (timeSlotId === 'morning' && taskHour >= 9 && taskHour < 13) return true;
+      if (timeSlotId === 'midday' && taskHour >= 13 && taskHour < 17) return true;
+      if (timeSlotId === 'afternoon' && taskHour >= 17 && taskHour < 21) return true;
+      
+      return false;
     });
   };
 
@@ -434,21 +447,22 @@ export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, i
                   {/* Time slots */}
                   <div className="max-h-[500px] overflow-y-auto">
                     {timeSlots.map((timeSlot) => {
-                      const timeSlotTasks = getTasksForTimeSlot(day.tasks, timeSlot);
+                      const timeSlotTasks = getTasksForTimeSlot(day.tasks, timeSlot.id);
                       return (
-                        <div key={timeSlot} className={`border-b ${borderSubtle} last:border-b-0`}>
+                        <div key={timeSlot.id} className={`border-b ${borderSubtle} last:border-b-0`}>
                           {/* Time header */}
                           <div className={`text-xs font-medium ${textSecondary} px-2 py-1 ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                            {timeSlot}
+                            <span className="font-semibold">{timeSlot.label}</span>
+                            <span className="ml-2 text-xs opacity-75">({timeSlot.time})</span>
                           </div>
                           
                           {/* Tasks for this time slot */}
-                          <DroppableDay id={`day-${index}-${timeSlot}`}>
+                          <DroppableDay id={`day-${index}-${timeSlot.id}`}>
                             <SortableContext 
                               items={timeSlotTasks.map(task => task.id)} 
                               strategy={verticalListSortingStrategy}
                             >
-                              <div className="min-h-[60px] p-2 space-y-1">
+                              <div className="min-h-[80px] p-2 space-y-1">
                                 {timeSlotTasks.map((task) => (
                                   <DraggableTask 
                                     key={task.id} 
@@ -461,7 +475,7 @@ export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, i
                                   />
                                 ))}
                                 {timeSlotTasks.length === 0 && (
-                                  <div className={`text-xs ${textSecondary} opacity-50 italic text-center py-2`}>
+                                  <div className={`text-xs ${textSecondary} opacity-50 italic text-center py-4`}>
                                     Arrastra tarea aquí
                                   </div>
                                 )}
