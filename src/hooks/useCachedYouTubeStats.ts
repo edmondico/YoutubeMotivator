@@ -285,17 +285,38 @@ export const useCachedYouTubeStats = (channelId?: string) => {
     };
 
     loadData();
-  }, [channelId, user]);
+  }, [channelId, user?.id]); // Fixed: only depend on user.id, not the whole user object
+
+  const refresh = async () => {
+    if (!channelId || !user || loading) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const freshData = await fetchFromYouTubeAPI();
+      if (freshData) {
+        setData(freshData);
+      }
+    } catch (apiError: any) {
+      setError(apiError.message || 'Error al actualizar datos');
+      setQuotaExceeded(true);
+      
+      // Try to get cached data as fallback
+      const cachedData = await fetchFromCache();
+      if (cachedData && cachedData.channel) {
+        setData(cachedData);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return {
     data,
     loading,
     error,
     quotaExceeded,
-    refresh: () => {
-      if (channelId && user) {
-        setData(prev => ({ ...prev, lastApiCall: null }));
-      }
-    }
+    refresh
   };
 };
