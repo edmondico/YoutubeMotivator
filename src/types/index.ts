@@ -8,6 +8,7 @@ export interface Task {
   actualDuration?: number; // minutos
   dueDate?: Date;
   scheduledDate?: Date; // Nueva propiedad para el calendario
+  scheduledTime?: string; // Hora en formato "HH:mm" (ej: "14:30")
   createdAt: Date;
   completedAt?: Date;
   category: 'video-creation' | 'editing' | 'research' | 'marketing' | 'other';

@@ -38,6 +38,7 @@ export const AdvancedTaskModal = ({ isOpen, onClose, onAddTask, scheduledDate, i
     priority: 'medium' as const,
     category: 'video-creation' as const,
     dueDate: '',
+    scheduledTime: '',
   });
 
   const resetForm = () => {
@@ -48,6 +49,7 @@ export const AdvancedTaskModal = ({ isOpen, onClose, onAddTask, scheduledDate, i
       priority: 'medium',
       category: 'video-creation',
       dueDate: '',
+      scheduledTime: '',
     });
   };
 
@@ -77,6 +79,7 @@ export const AdvancedTaskModal = ({ isOpen, onClose, onAddTask, scheduledDate, i
       status: 'pending',
       xpReward: calculatedXP,
       scheduledDate: scheduledDate,
+      scheduledTime: formData.scheduledTime || undefined,
       dueDate: formData.dueDate ? new Date(formData.dueDate) : undefined,
     };
 
@@ -217,6 +220,21 @@ export const AdvancedTaskModal = ({ isOpen, onClose, onAddTask, scheduledDate, i
                     className={`w-full px-6 py-4 text-lg border-2 ${border} ${inputBg} ${textPrimary} rounded-xl focus:ring-2 ${ringFocus} focus:border-transparent transition-colors`}
                   />
                 </div>
+
+                {/* Hora programada */}
+                {scheduledDate && (
+                  <div>
+                    <label className={`block text-lg font-semibold ${textPrimary} mb-3`}>
+                      🕒 Hora programada (opcional)
+                    </label>
+                    <input
+                      type="time"
+                      value={formData.scheduledTime}
+                      onChange={(e) => setFormData(prev => ({ ...prev, scheduledTime: e.target.value }))}
+                      className={`w-full px-6 py-4 text-lg border-2 ${border} ${inputBg} ${textPrimary} rounded-xl focus:ring-2 ${ringFocus} focus:border-transparent transition-colors`}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Columna derecha */}

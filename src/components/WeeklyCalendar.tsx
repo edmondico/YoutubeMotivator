@@ -37,6 +37,11 @@ interface WeeklyCalendarProps {
   isDark: boolean;
 }
 
+// Time slots from 10:00 to 20:00
+const timeSlots = [
+  '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'
+];
+
 export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, isDark }: WeeklyCalendarProps) => {
   
   const handleDuplicateTask = (task: Task) => {
@@ -49,6 +54,7 @@ export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, i
       status: 'pending',
       xpReward: task.xpReward,
       scheduledDate: task.scheduledDate,
+      scheduledTime: task.scheduledTime,
       dueDate: task.dueDate,
     };
     onAddTask(newTask);
@@ -126,8 +132,33 @@ export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, i
     const activeTaskId = active.id as string;
     const overContainerId = over.id as string;
 
-    // Si se suelta en un día específico
-    if (overContainerId.startsWith('day-')) {
+    // Si se suelta en una franja horaria específica (day-0-10:00)
+    if (overContainerId.includes('-') && overContainerId.startsWith('day-')) {
+      const parts = overContainerId.split('-');
+      if (parts.length >= 3) {
+        const dayIndex = parseInt(parts[1]);
+        const timeSlot = parts.slice(2).join('-'); // En caso de que la hora tenga guiones
+        
+        const targetDate = weekDays[dayIndex]?.date;
+        if (targetDate) {
+          if (timeSlot === 'unscheduled') {
+            // Dropped in unscheduled area of a day
+            onUpdateTask(activeTaskId, { 
+              scheduledDate: targetDate, 
+              scheduledTime: undefined 
+            });
+          } else {
+            // Dropped in a specific time slot
+            onUpdateTask(activeTaskId, { 
+              scheduledDate: targetDate, 
+              scheduledTime: timeSlot 
+            });
+          }
+        }
+      }
+    }
+    // Si se suelta en un día específico (formato antiguo para compatibilidad)
+    else if (overContainerId.startsWith('day-') && !overContainerId.includes(':')) {
       const dayIndex = parseInt(overContainerId.replace('day-', ''));
       const targetDate = weekDays[dayIndex]?.date;
       
@@ -135,10 +166,12 @@ export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, i
         onUpdateTask(activeTaskId, { scheduledDate: targetDate });
       }
     }
-    
     // Si se suelta en el área de tareas sin programar
     else if (overContainerId === 'unscheduled') {
-      onUpdateTask(activeTaskId, { scheduledDate: undefined });
+      onUpdateTask(activeTaskId, { 
+        scheduledDate: undefined, 
+        scheduledTime: undefined 
+      });
     }
 
     setActiveId(null);
@@ -227,6 +260,21 @@ export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, i
     const saved = JSON.parse(localStorage.getItem('week-presets') || '[]');
     setSavedPresets(saved);
   }, []);
+
+  // Helper function to get tasks for a specific time slot
+  const getTasksForTimeSlot = (dayTasks: Task[], timeSlot: string) => {
+    const hour = parseInt(timeSlot.split(':')[0]);
+    return dayTasks.filter(task => {
+      if (!task.scheduledTime) return false;
+      const taskHour = parseInt(task.scheduledTime.split(':')[0]);
+      return taskHour === hour;
+    });
+  };
+
+  // Helper function to get unscheduled tasks for a day (no specific time)
+  const getUnscheduledTasksForDay = (dayTasks: Task[]) => {
+    return dayTasks.filter(task => !task.scheduledTime);
+  };
 
 
   const activeTask = tasks.find(task => task.id === activeId);
@@ -360,7 +408,7 @@ export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, i
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
                   className={`
-                    rounded-lg p-3 min-h-[300px] border-2 transition-colors
+                    rounded-lg border-2 transition-colors overflow-hidden
                     ${isSameDay(day.date, new Date()) 
                       ? `${todayBg} ${todayBorder}` 
                       : `${bgSubtle} ${borderSubtle} ${isDark ? 'hover:border-gray-600' : 'hover:border-gray-300'}`
@@ -368,7 +416,7 @@ export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, i
                   `}
                 >
                   {/* Header del día */}
-                  <div className="text-center mb-3">
+                  <div className="text-center p-3 border-b">
                     <div className={`font-semibold ${textPrimary} capitalize text-sm`}>
                       {day.day}
                     </div>
@@ -383,37 +431,84 @@ export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, i
                     </div>
                   </div>
 
-                  {/* Tareas del día */}
-                  <DroppableDay id={`day-${index}`}>
-                    <SortableContext 
-                      items={day.tasks.map(task => task.id)} 
-                      strategy={verticalListSortingStrategy}
-                    >
-                      <div className="space-y-2">
-                        {day.tasks.map((task) => (
-                          <DraggableTask 
-                            key={task.id} 
-                            task={task} 
-                            compact={true}
-                            onUpdateTask={onUpdateTask}
-                            onDeleteTask={onDeleteTask}
-                            onDuplicateTask={handleDuplicateTask}
-                            isDark={isDark}
-                          />
-                        ))}
+                  {/* Time slots */}
+                  <div className="max-h-[500px] overflow-y-auto">
+                    {timeSlots.map((timeSlot) => {
+                      const timeSlotTasks = getTasksForTimeSlot(day.tasks, timeSlot);
+                      return (
+                        <div key={timeSlot} className={`border-b ${borderSubtle} last:border-b-0`}>
+                          {/* Time header */}
+                          <div className={`text-xs font-medium ${textSecondary} px-2 py-1 ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                            {timeSlot}
+                          </div>
+                          
+                          {/* Tasks for this time slot */}
+                          <DroppableDay id={`day-${index}-${timeSlot}`}>
+                            <SortableContext 
+                              items={timeSlotTasks.map(task => task.id)} 
+                              strategy={verticalListSortingStrategy}
+                            >
+                              <div className="min-h-[60px] p-2 space-y-1">
+                                {timeSlotTasks.map((task) => (
+                                  <DraggableTask 
+                                    key={task.id} 
+                                    task={task} 
+                                    compact={true}
+                                    onUpdateTask={onUpdateTask}
+                                    onDeleteTask={onDeleteTask}
+                                    onDuplicateTask={handleDuplicateTask}
+                                    isDark={isDark}
+                                  />
+                                ))}
+                                {timeSlotTasks.length === 0 && (
+                                  <div className={`text-xs ${textSecondary} opacity-50 italic text-center py-2`}>
+                                    Arrastra tarea aquí
+                                  </div>
+                                )}
+                              </div>
+                            </SortableContext>
+                          </DroppableDay>
+                        </div>
+                      );
+                    })}
+
+                    {/* Unscheduled tasks for this day */}
+                    {getUnscheduledTasksForDay(day.tasks).length > 0 && (
+                      <div className={`border-t-2 ${borderSubtle}`}>
+                        <div className={`text-xs font-medium ${textSecondary} px-2 py-1 ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                          Sin hora específica
+                        </div>
+                        <DroppableDay id={`day-${index}-unscheduled`}>
+                          <SortableContext 
+                            items={getUnscheduledTasksForDay(day.tasks).map(task => task.id)} 
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <div className="p-2 space-y-1">
+                              {getUnscheduledTasksForDay(day.tasks).map((task) => (
+                                <DraggableTask 
+                                  key={task.id} 
+                                  task={task} 
+                                  compact={true}
+                                  onUpdateTask={onUpdateTask}
+                                  onDeleteTask={onDeleteTask}
+                                  onDuplicateTask={handleDuplicateTask}
+                                  isDark={isDark}
+                                />
+                              ))}
+                            </div>
+                          </SortableContext>
+                        </DroppableDay>
                       </div>
-                    </SortableContext>
-                  </DroppableDay>
+                    )}
+                  </div>
 
                   {/* Resumen del día */}
-                  {day.tasks.length > 0 && (
-                    <div className={`mt-3 pt-2 border-t ${borderSubtle}`}>
-                      <div className={`text-xs ${textSecondary} flex items-center justify-between`}>
-                        <span>{day.tasks.length} tarea{day.tasks.length !== 1 ? 's' : ''}</span>
-                        <span>{day.tasks.reduce((acc, task) => acc + task.estimatedDuration, 0)}min</span>
-                      </div>
+                  <div className={`p-2 border-t ${borderSubtle} ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                    <div className={`text-xs ${textSecondary} flex items-center justify-between`}>
+                      <span>{day.tasks.length} tarea{day.tasks.length !== 1 ? 's' : ''}</span>
+                      <span>{day.tasks.reduce((acc, task) => acc + task.estimatedDuration, 0)}min</span>
                     </div>
-                  )}
+                  </div>
                 </motion.div>
               ))}
             </div>
