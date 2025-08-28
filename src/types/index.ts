@@ -76,7 +76,7 @@ export interface AppConfig {
   };
 }
 
-export type ViewMode = 'dashboard' | 'calendar' | 'analytics' | 'youtube-analytics' | 'config';
+export type ViewMode = 'dashboard' | 'calendar' | 'analytics' | 'youtube-analytics' | 'profile' | 'config';
 
 export interface WeekDay {
   date: Date;

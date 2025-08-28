@@ -1,10 +1,11 @@
 'use client';
 
 import { ViewMode } from '@/types';
-import { Home, Calendar, BarChart3, Settings, Moon, Sun, Youtube } from 'lucide-react';
+import { Home, Calendar, BarChart3, Settings, Moon, Sun, Youtube, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { NotificationCenter } from './NotificationCenter';
 import { useAppConfig } from '@/hooks/useAppConfig';
+import { useUserStats } from '@/hooks/useUserStats';
 
 interface NavigationProps {
   currentView: ViewMode;
@@ -41,6 +42,13 @@ const navItems = [
     description: 'Análisis del canal de YouTube'
   },
   {
+    id: 'profile' as ViewMode,
+    label: 'Perfil',
+    icon: User,
+    emoji: '👤',
+    description: 'Tu perfil, logros y estadísticas'
+  },
+  {
     id: 'config' as ViewMode,
     label: 'Configuración',
     icon: Settings,
@@ -51,6 +59,7 @@ const navItems = [
 
 export const Navigation = ({ currentView, onViewChange }: NavigationProps) => {
   const { config, updateConfig } = useAppConfig();
+  const { stats } = useUserStats();
   
   const toggleDarkMode = () => {
     updateConfig({
@@ -125,11 +134,11 @@ export const Navigation = ({ currentView, onViewChange }: NavigationProps) => {
         <div className="flex items-center gap-4 text-sm">
           <div className="flex items-center gap-1">
             <span>🔥</span>
-            <span className="font-medium">7 días</span>
+            <span className="font-medium">{stats.streak} días</span>
           </div>
           <div className="flex items-center gap-1">
             <span>⭐</span>
-            <span className="font-medium">Nivel 3</span>
+            <span className="font-medium">Nivel {stats.level}</span>
           </div>
           
           {/* Dark Mode Toggle */}

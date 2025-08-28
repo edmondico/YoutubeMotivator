@@ -13,6 +13,7 @@ import { WeeklyCalendar } from '@/components/WeeklyCalendar';
 import { YouTubeAnalyticsView } from '@/components/YouTubeAnalyticsView';
 import { ConfigPage } from '@/components/ConfigPage';
 import { GoalProgressCard } from '@/components/GoalProgressCard';
+import { UserProfileCard } from '@/components/UserProfileCard';
 import { useTasks } from '@/hooks/useTasks';
 import { useUserStats } from '@/hooks/useUserStats';
 import { useAppConfig } from '@/hooks/useAppConfig';
@@ -374,6 +375,18 @@ export default function Home() {
               transition={{ duration: 0.3 }}
             >
               <YouTubeAnalyticsView isDark={isDark} />
+            </motion.div>
+          )}
+
+          {currentView === 'profile' && (
+            <motion.div
+              key="profile"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <UserProfileCard isDark={isDark} />
             </motion.div>
           )}
 

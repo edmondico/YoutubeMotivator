@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Task } from '@/types';
-import { GripVertical, Clock, CheckCircle, Play, Circle, Info, X, ChevronDown } from 'lucide-react';
+import { GripVertical, Clock, CheckCircle, Play, Circle, Info, X, ChevronDown, Copy } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useUserStats } from '@/hooks/useUserStats';
@@ -14,6 +14,7 @@ interface DraggableTaskProps {
   compact?: boolean;
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
   onDeleteTask: (id: string) => void;
+  onDuplicateTask?: (task: Task) => void;
   isDark: boolean;
 }
 
@@ -46,7 +47,7 @@ const categoryEmojis = {
   'other': '📝',
 };
 
-export const DraggableTask = ({ task, compact = false, onUpdateTask, onDeleteTask, isDark }: DraggableTaskProps) => {
+export const DraggableTask = ({ task, compact = false, onUpdateTask, onDeleteTask, onDuplicateTask, isDark }: DraggableTaskProps) => {
   const [showInfo, setShowInfo] = useState(false);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const { completeTask } = useUserStats();
@@ -96,6 +97,13 @@ export const DraggableTask = ({ task, compact = false, onUpdateTask, onDeleteTas
     onDeleteTask(task.id);
   };
 
+  const handleDuplicate = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the info modal
+    if (onDuplicateTask) {
+      onDuplicateTask(task);
+    }
+  };
+
   const handleTaskClick = () => {
     setShowInfo(true);
   };
@@ -119,10 +127,14 @@ export const DraggableTask = ({ task, compact = false, onUpdateTask, onDeleteTas
         {...listeners}
         onClick={handleTaskClick}
         className={`
-          ${priorityColors[task.priority]} 
+          ${task.status === 'completed' 
+            ? isDark ? 'border-green-600 bg-green-900/30' : 'border-green-400 bg-green-50'
+            : priorityColors[task.priority]
+          } 
           border-2 rounded-lg p-2 cursor-grab active:cursor-grabbing transition-all
           ${isDragging ? 'opacity-50 scale-105 shadow-lg z-50' : isDark ? 'hover:shadow-md hover:shadow-blue-500/10' : 'hover:shadow-md'}
           ${compact ? 'text-xs' : 'text-sm'}
+          ${task.status === 'completed' ? 'opacity-75' : ''}
         `}
       >
       <div className="flex items-start gap-2">
@@ -327,6 +339,25 @@ export const DraggableTask = ({ task, compact = false, onUpdateTask, onDeleteTas
               {task.status === 'completed' ? 'Completada' : 
                task.status === 'in-progress' ? 'Marcar completada' : 'Iniciar tarea'}
             </button>
+            
+            {onDuplicateTask && (
+              <button
+                onClick={(e) => {
+                  handleDuplicate(e);
+                  setShowInfo(false);
+                }}
+                className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                  isDark 
+                    ? 'bg-green-600 hover:bg-green-700 text-white' 
+                    : 'bg-green-500 hover:bg-green-600 text-white'
+                }`}
+                title="Duplicar tarea"
+              >
+                <Copy className="w-4 h-4" />
+                Duplicar
+              </button>
+            )}
+            
             <button
               onClick={(e) => {
                 handleDelete(e);

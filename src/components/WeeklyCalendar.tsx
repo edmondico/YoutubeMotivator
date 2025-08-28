@@ -22,7 +22,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, Download, Upload, Save, FolderOpen } from 'lucide-react';
 import { TaskCard } from './TaskCard';
 import { DroppableDay } from './DroppableDay';
 import { DraggableTask } from './DraggableTask';
@@ -38,11 +38,29 @@ interface WeeklyCalendarProps {
 }
 
 export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, isDark }: WeeklyCalendarProps) => {
+  
+  const handleDuplicateTask = (task: Task) => {
+    const newTask: Omit<Task, 'id' | 'createdAt'> = {
+      title: `${task.title} (copia)`,
+      description: task.description,
+      estimatedDuration: task.estimatedDuration,
+      priority: task.priority,
+      category: task.category,
+      status: 'pending',
+      xpReward: task.xpReward,
+      scheduledDate: task.scheduledDate,
+      dueDate: task.dueDate,
+    };
+    onAddTask(newTask);
+  };
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [weekDays, setWeekDays] = useState<WeekDay[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [unscheduledTasks, setUnscheduledTasks] = useState<Task[]>([]);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showPresetModal, setShowPresetModal] = useState(false);
+  const [presetName, setPresetName] = useState('');
+  const [savedPresets, setSavedPresets] = useState<Array<{name: string, tasks: Task[]}>>([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -131,6 +149,85 @@ export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, i
     setCurrentWeek(prev => addDays(prev, days));
   };
 
+  const importLastWeek = () => {
+    const lastWeekStart = addDays(startOfWeek(currentWeek, { weekStartsOn: 1 }), -7);
+    const lastWeekEnd = addDays(lastWeekStart, 6);
+    
+    const lastWeekTasks = tasks.filter(task => 
+      task.scheduledDate && 
+      task.scheduledDate >= lastWeekStart && 
+      task.scheduledDate <= lastWeekEnd
+    );
+    
+    lastWeekTasks.forEach(task => {
+      const daysDiff = 7; // Mover una semana adelante
+      const newScheduledDate = task.scheduledDate ? addDays(task.scheduledDate, daysDiff) : undefined;
+      
+      const newTask: Omit<Task, 'id' | 'createdAt'> = {
+        title: task.title,
+        description: task.description,
+        estimatedDuration: task.estimatedDuration,
+        priority: task.priority,
+        category: task.category,
+        status: 'pending', // Reset status
+        xpReward: task.xpReward,
+        scheduledDate: newScheduledDate,
+        dueDate: task.dueDate ? addDays(task.dueDate, daysDiff) : undefined,
+      };
+      onAddTask(newTask);
+    });
+  };
+
+  const saveWeekPreset = () => {
+    if (!presetName.trim()) return;
+    
+    const currentWeekTasks = tasks.filter(task => 
+      task.scheduledDate && 
+      weekDays.some(day => isSameDay(day.date, task.scheduledDate!))
+    );
+    
+    const preset = {
+      name: presetName,
+      tasks: currentWeekTasks.map(task => ({
+        ...task,
+        id: `preset_${Date.now()}_${Math.random()}`, // New ID for preset
+        scheduledDate: task.scheduledDate,
+        status: 'pending' as const, // Reset status
+      }))
+    };
+    
+    const existingPresets = JSON.parse(localStorage.getItem('week-presets') || '[]');
+    const newPresets = [...existingPresets, preset];
+    localStorage.setItem('week-presets', JSON.stringify(newPresets));
+    setSavedPresets(newPresets);
+    setPresetName('');
+    setShowPresetModal(false);
+  };
+
+  const loadWeekPreset = (preset: {name: string, tasks: Task[]}) => {
+    preset.tasks.forEach(task => {
+      const newTask: Omit<Task, 'id' | 'createdAt'> = {
+        title: task.title,
+        description: task.description,
+        estimatedDuration: task.estimatedDuration,
+        priority: task.priority,
+        category: task.category,
+        status: 'pending',
+        xpReward: task.xpReward,
+        scheduledDate: task.scheduledDate,
+        dueDate: task.dueDate,
+      };
+      onAddTask(newTask);
+    });
+    setShowPresetModal(false);
+  };
+
+  // Load saved presets on mount
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem('week-presets') || '[]');
+    setSavedPresets(saved);
+  }, []);
+
 
   const activeTask = tasks.find(task => task.id === activeId);
 
@@ -174,6 +271,28 @@ export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, i
             >
               <ChevronRight className={`w-5 h-5 ${textSecondary}`} />
             </button>
+            
+            {/* Divider */}
+            <div className={`w-px h-6 ${isDark ? 'bg-gray-600' : 'bg-gray-300'}`} />
+            
+            {/* Import/Export buttons */}
+            <button
+              onClick={importLastWeek}
+              className={`flex items-center gap-2 px-3 py-2 text-sm ${hoverBg} rounded-lg transition-colors`}
+              title="Importar tareas de la semana pasada"
+            >
+              <Download className={`w-4 h-4 ${textSecondary}`} />
+              <span className={`${textSecondary} hidden sm:inline`}>Importar semana pasada</span>
+            </button>
+            
+            <button
+              onClick={() => setShowPresetModal(true)}
+              className={`flex items-center gap-2 px-3 py-2 text-sm ${hoverBg} rounded-lg transition-colors`}
+              title="Guardar/Cargar presets de semana"
+            >
+              <Save className={`w-4 h-4 ${textSecondary}`} />
+              <span className={`${textSecondary} hidden sm:inline`}>Presets</span>
+            </button>
           </div>
         </div>
 
@@ -211,6 +330,7 @@ export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, i
                         task={task} 
                         onUpdateTask={onUpdateTask}
                         onDeleteTask={onDeleteTask}
+                        onDuplicateTask={handleDuplicateTask}
                         isDark={isDark}
                       />
                     ))}
@@ -277,6 +397,7 @@ export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, i
                             compact={true}
                             onUpdateTask={onUpdateTask}
                             onDeleteTask={onDeleteTask}
+                            onDuplicateTask={handleDuplicateTask}
                             isDark={isDark}
                           />
                         ))}
@@ -321,6 +442,93 @@ export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, i
         onAddTask={onAddTask}
         isDark={isDark}
       />
+
+      {/* Preset Modal */}
+      {showPresetModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowPresetModal(false)}>
+          <div 
+            className={`${isDark ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-200 text-gray-800'} rounded-xl p-6 max-w-md w-full m-4 border-2`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold">Presets de Semana</h3>
+              <button
+                onClick={() => setShowPresetModal(false)}
+                className={`p-1 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} rounded transition-colors`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Save new preset */}
+            <div className="mb-6">
+              <h4 className={`font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'} mb-3`}>Guardar Semana Actual</h4>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={presetName}
+                  onChange={(e) => setPresetName(e.target.value)}
+                  placeholder="Nombre del preset"
+                  className={`flex-1 px-3 py-2 border ${isDark ? 'border-gray-600 bg-gray-700 text-gray-100' : 'border-gray-300 bg-white text-gray-900'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                />
+                <button
+                  onClick={saveWeekPreset}
+                  disabled={!presetName.trim()}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Load existing presets */}
+            <div>
+              <h4 className={`font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'} mb-3`}>Cargar Preset</h4>
+              {savedPresets.length === 0 ? (
+                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} text-center py-4`}>
+                  No hay presets guardados
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {savedPresets.map((preset, index) => (
+                    <div 
+                      key={index}
+                      className={`flex items-center justify-between p-3 ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-50 hover:bg-gray-100'} rounded-lg transition-colors`}
+                    >
+                      <div>
+                        <p className="font-medium">{preset.name}</p>
+                        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {preset.tasks.length} tarea{preset.tasks.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => loadWeekPreset(preset)}
+                          className="p-2 text-green-500 hover:bg-green-100 dark:hover:bg-green-900/50 rounded transition-colors"
+                          title="Cargar preset"
+                        >
+                          <FolderOpen className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            const newPresets = savedPresets.filter((_, i) => i !== index);
+                            localStorage.setItem('week-presets', JSON.stringify(newPresets));
+                            setSavedPresets(newPresets);
+                          }}
+                          className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded transition-colors"
+                          title="Eliminar preset"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </DndContext>
   );
 };

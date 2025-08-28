@@ -132,7 +132,7 @@ export const AdvancedTaskModal = ({ isOpen, onClose, onAddTask, scheduledDate, i
           </div>
 
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-            <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
+            <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Columna izquierda */}
               <div className="space-y-6">
                 {/* Título */}
@@ -300,7 +300,7 @@ export const AdvancedTaskModal = ({ isOpen, onClose, onAddTask, scheduledDate, i
             </div>
 
             {/* Botones - pegados al fondo */}
-            <div className={`p-6 border-t ${border} bg-opacity-50 ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+            <div className={`flex-shrink-0 p-6 border-t ${border} bg-opacity-50 ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
               <div className="flex items-center gap-4">
                 <button
                   type="button"
