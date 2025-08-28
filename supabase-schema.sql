@@ -17,6 +17,9 @@ CREATE TABLE public.user_profiles (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Add timezone column for user time zone support
+ALTER TABLE public.user_profiles ADD COLUMN timezone TEXT DEFAULT 'UTC';
+
 -- Create user_goals table
 CREATE TABLE public.user_goals (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
