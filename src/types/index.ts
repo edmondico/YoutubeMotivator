@@ -94,3 +94,13 @@ export interface Achievement {
   category: 'tasks' | 'youtube' | 'general';
   getProgress?: () => number; // Devuelve un valor de 0 a 100
 }
+
+export interface OnboardingGoals {
+  weeklySubscribers: number;
+  weeklyViews: number;
+  weeklyVideos: number;
+  dailyTasks: number;
+  streakTarget: number;
+  subscribersTarget: number;
+  subscribersTargetDate: string; // ISO date string
+}

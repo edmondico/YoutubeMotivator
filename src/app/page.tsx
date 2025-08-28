@@ -17,6 +17,7 @@ import { useTasks } from '@/hooks/useTasks';
 import { useUserStats } from '@/hooks/useUserStats';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import { useAuth } from '@/components/AuthProvider';
+import { useOnboarding } from '@/hooks/useOnboarding';
 import { LoginForm } from '@/components/LoginForm';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Filter, Calendar, Trophy, BarChart3 } from 'lucide-react';
@@ -275,6 +276,7 @@ const AnalyticsView = ({ tasks, isDark }: { tasks: Task[], isDark: boolean }) =>
 
 export default function Home() {
   const { user, loading } = useAuth();
+  const { needsOnboarding, isLoading: onboardingLoading, redirectToOnboarding } = useOnboarding();
   const { tasks, addTask, updateTask, deleteTask } = useTasks();
   const { completeTask } = useUserStats();
   const { config } = useAppConfig();
@@ -282,7 +284,13 @@ export default function Home() {
 
   const isDark = config.theme.darkMode;
 
-  if (loading) {
+  // Check if we need to redirect to onboarding
+  if (user && needsOnboarding && !onboardingLoading) {
+    redirectToOnboarding();
+    return null;
+  }
+
+  if (loading || onboardingLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center">
