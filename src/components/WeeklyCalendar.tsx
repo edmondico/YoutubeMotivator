@@ -99,23 +99,31 @@ export const WeeklyCalendar = ({ tasks, onUpdateTask, onDeleteTask, onAddTask, i
     
     for (let i = 0; i < 7; i++) {
       const date = addDays(weekStart, i);
+      // Solo incluir tareas que tengan scheduledDate igual a este día
+      // y filtrar por ID único para evitar duplicados si el estado no refresca bien
       const dayTasks = tasks.filter(task => 
         task.scheduledDate && isSameDay(task.scheduledDate, date)
       );
-      
+
+      // Eliminar duplicados por ID (por si el estado no refresca bien)
+      const uniqueDayTasks = Array.from(new Map(dayTasks.map(t => [t.id, t])).values());
+
       days.push({
         date,
         day: format(date, 'EEEE', { locale: es }),
         dayNumber: date.getDate(),
-        tasks: dayTasks,
+        tasks: uniqueDayTasks,
       });
     }
     
     setWeekDays(days);
     
     // Tareas no programadas
-    const unscheduled = tasks.filter(task => !task.scheduledDate);
-    setUnscheduledTasks(unscheduled);
+  // Solo tareas que no tienen fecha programada
+  const unscheduled = tasks.filter(task => !task.scheduledDate);
+  // Eliminar duplicados por ID
+  const uniqueUnscheduled = Array.from(new Map(unscheduled.map(t => [t.id, t])).values());
+  setUnscheduledTasks(uniqueUnscheduled);
   }, [currentWeek, tasks]);
 
   const handleDragStart = (event: DragStartEvent) => {
