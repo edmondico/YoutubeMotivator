@@ -39,6 +39,7 @@ export const useTasks = () => {
         createdAt: new Date(task.created_at),
         dueDate: task.due_date ? new Date(task.due_date) : undefined,
         scheduledDate: task.scheduled_date ? new Date(task.scheduled_date) : undefined,
+        scheduledTime: task.scheduled_time || undefined,
         completedAt: task.completed_at ? new Date(task.completed_at) : undefined,
         estimatedDuration: task.estimated_duration,
         actualDuration: task.actual_duration,
@@ -73,6 +74,7 @@ export const useTasks = () => {
           actual_duration: taskData.actualDuration,
           due_date: taskData.dueDate?.toISOString(),
           scheduled_date: taskData.scheduledDate?.toISOString(),
+          scheduled_time: taskData.scheduledTime || null,
           category: taskData.category,
           xp_reward: taskData.xpReward,
         }])
@@ -100,16 +102,17 @@ export const useTasks = () => {
     try {
       const updateData: any = {};
       
-      if (updates.title !== undefined) updateData.title = updates.title;
-      if (updates.description !== undefined) updateData.description = updates.description;
-      if (updates.priority !== undefined) updateData.priority = updates.priority;
-      if (updates.status !== undefined) updateData.status = updates.status;
-      if (updates.estimatedDuration !== undefined) updateData.estimated_duration = updates.estimatedDuration;
-      if (updates.actualDuration !== undefined) updateData.actual_duration = updates.actualDuration;
-      if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate?.toISOString();
-      if (updates.scheduledDate !== undefined) updateData.scheduled_date = updates.scheduledDate?.toISOString();
-      if (updates.category !== undefined) updateData.category = updates.category;
-      if (updates.xpReward !== undefined) updateData.xp_reward = updates.xpReward;
+  if (updates.title !== undefined) updateData.title = updates.title;
+  if (updates.description !== undefined) updateData.description = updates.description;
+  if (updates.priority !== undefined) updateData.priority = updates.priority;
+  if (updates.status !== undefined) updateData.status = updates.status;
+  if (updates.estimatedDuration !== undefined) updateData.estimated_duration = updates.estimatedDuration;
+  if (updates.actualDuration !== undefined) updateData.actual_duration = updates.actualDuration;
+  if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate?.toISOString();
+  if (updates.scheduledDate !== undefined) updateData.scheduled_date = updates.scheduledDate?.toISOString();
+  if (updates.scheduledTime !== undefined) updateData.scheduled_time = updates.scheduledTime || null;
+  if (updates.category !== undefined) updateData.category = updates.category;
+  if (updates.xpReward !== undefined) updateData.xp_reward = updates.xpReward;
       
       if (updates.status === 'completed') {
         updateData.completed_at = new Date().toISOString();
