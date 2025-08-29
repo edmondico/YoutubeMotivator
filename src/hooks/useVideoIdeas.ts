@@ -240,7 +240,7 @@ export const useVideoIdeas = () => {
   }, [user, supabase]);
 
   // Ideas management
-  const addIdea = useCallback(async (groupId: string, title: string, description?: string, score: number = 5) => {
+  const addIdea = useCallback(async (groupId: string | null, title: string, description?: string, score: number = 5) => {
     if (!user) return null;
 
     try {
