@@ -16,7 +16,7 @@ export interface IdeaGroup {
 
 export interface VideoIdea {
   id: string;
-  group_id: string;
+  group_id: string | null;
   title: string;
   description?: string;
   score: number; // 1-10
@@ -244,8 +244,8 @@ export const useVideoIdeas = () => {
     if (!user) return null;
 
     try {
-      const groupIdeas = ideas.filter(i => i.group_id === groupId);
-      const maxOrder = Math.max(...groupIdeas.map(i => i.sort_order), 0);
+      const relevantIdeas = groupId ? ideas.filter(i => i.group_id === groupId) : ideas.filter(i => !i.group_id);
+      const maxOrder = Math.max(...relevantIdeas.map(i => i.sort_order), 0);
 
       const { data, error } = await supabase
         .from('video_ideas')
@@ -458,7 +458,7 @@ export const useVideoIdeas = () => {
     deleteGroup,
     
     // Idea methods
-    addIdea: addIdea as (groupId: string | null, title: string, description?: string, score?: number) => Promise<VideoIdea | null>,
+    addIdea,
     updateIdea,
     deleteIdea,
     reorderIdeas,
