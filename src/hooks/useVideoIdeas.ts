@@ -125,7 +125,10 @@ export const useVideoIdeas = () => {
 
   // Load all data
   const loadData = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     
     setLoading(true);
     setError(null);
@@ -393,6 +396,8 @@ export const useVideoIdeas = () => {
   useEffect(() => {
     if (user) {
       loadData();
+    } else {
+      setLoading(false);
     }
   }, [user, loadData]);
 

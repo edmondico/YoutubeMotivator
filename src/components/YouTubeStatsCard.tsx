@@ -10,14 +10,23 @@ import { es } from 'date-fns/locale';
 
 export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
   const { config } = useAppConfig();
-  const smartStats = useSmartYouTubeStats(config.channelId);
+  const smartStats = useSmartYouTubeStats(config?.channelId);
   const { weeklyStats } = useWeeklyVideoTracker();
 
-  const { stats, dataSource, loading, error, quotaExceeded, lastUpdated, refresh, getMotivationalMessage, getProgressColor } = smartStats;
+  // Fallbacks seguros para todos los datos
+  const stats = smartStats.stats || {};
+  const dataSource = smartStats.dataSource || '';
+  const loading = !!smartStats.loading;
+  const error = smartStats.error || '';
+  const quotaExceeded = !!smartStats.quotaExceeded;
+  const lastUpdated = smartStats.lastUpdated || null;
+  const refresh = smartStats.refresh;
+  const getMotivationalMessage = smartStats.getMotivationalMessage || (() => '¡Sigue adelante!');
+  const getProgressColor = smartStats.getProgressColor || (() => 'text-gray-500');
 
-  const weeklyGoal = config.goals.videosPerWeek;
-  const videosThisWeek = weeklyStats.videosThisWeek;
-  const weeklyProgress = Math.min((videosThisWeek / weeklyGoal) * 100, 100);
+  const weeklyGoal = config?.goals?.videosPerWeek || 1;
+  const videosThisWeek = weeklyStats?.videosThisWeek ?? 0;
+  const weeklyProgress = weeklyGoal > 0 ? Math.min((videosThisWeek / weeklyGoal) * 100, 100) : 0;
 
   // Get data source icon and label
   const getDataSourceInfo = () => {
@@ -172,19 +181,20 @@ export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
 
       {/* Mensaje motivacional principal */}
       <div className={`text-center p-4 rounded-lg ${bgInner} mb-6 border-l-4 ${
-        stats.daysSinceLastVideo < 3 ? 'border-green-500' : 
-        stats.daysSinceLastVideo < 7 ? 'border-yellow-500' : 'border-red-500'
+        typeof stats.daysSinceLastVideo === 'number' ?
+          (stats.daysSinceLastVideo < 3 ? 'border-green-500' :
+            stats.daysSinceLastVideo < 7 ? 'border-yellow-500' : 'border-red-500')
+          : 'border-gray-500'
       }`}>
         <p className={`font-semibold ${getProgressColor()}`}>
-          {getMotivationalMessage()}
+          {typeof getMotivationalMessage === 'function' ? getMotivationalMessage() : '¡Sigue adelante!'}
         </p>
         {stats.lastVideoDate && (
           <div className={`mt-2 text-sm ${textSecondary}`}>
-            <span>Último video: {format(stats.lastVideoDate, "dd 'de' MMMM", { locale: es })}</span>
+            <span>Último video: {stats.lastVideoDate ? format(stats.lastVideoDate, "dd 'de' MMMM", { locale: es }) : 'Sin datos'}</span>
           </div>
         )}
       </div>
-
       {/* Estadísticas en grid */}
       <div className="grid grid-cols-2 gap-4">
         <motion.div
@@ -196,13 +206,12 @@ export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
             <span className={`text-sm font-medium ${textSecondary}`}>Suscriptores</span>
           </div>
           <div className={`text-2xl font-bold ${textPrimary}`}>
-            {stats.subscriberCount.toLocaleString()}
+            {typeof stats.subscriberCount === 'number' ? stats.subscriberCount.toLocaleString() : '0'}
           </div>
           <div className="text-xs text-gray-500">
             Total
           </div>
         </motion.div>
-
         <motion.div
           whileHover={{ scale: 1.02 }}
           className={`${bgInner} rounded-lg p-4 text-center`}
@@ -212,13 +221,12 @@ export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
             <span className={`text-sm font-medium ${textSecondary}`}>Días sin video</span>
           </div>
           <div className={`text-2xl font-bold ${getProgressColor()}`}>
-            {stats.daysSinceLastVideo}
+            {typeof stats.daysSinceLastVideo === 'number' ? stats.daysSinceLastVideo : '0'}
           </div>
           <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
             días
           </div>
         </motion.div>
-
         <motion.div
           whileHover={{ scale: 1.02 }}
           className={`${bgInner} rounded-lg p-4 text-center`}
@@ -228,13 +236,14 @@ export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
             <span className={`text-sm font-medium ${textSecondary}`}>Videos totales</span>
           </div>
           <div className="text-2xl font-bold text-green-600">
-            {stats.totalViews ? Math.floor(stats.totalViews / stats.averageViewsPerVideo) : 0}
+            {typeof stats.totalViews === 'number' && typeof stats.averageViewsPerVideo === 'number' && stats.averageViewsPerVideo > 0
+              ? Math.floor(stats.totalViews / stats.averageViewsPerVideo)
+              : '0'}
           </div>
           <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
             publicados
           </div>
         </motion.div>
-
         <motion.div
           whileHover={{ scale: 1.02 }}
           className={`${bgInner} rounded-lg p-4 text-center`}
@@ -244,14 +253,13 @@ export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
             <span className={`text-sm font-medium ${textSecondary}`}>Vistas totales</span>
           </div>
           <div className="text-2xl font-bold text-blue-600">
-            {(stats.totalViews / 1000000).toFixed(1)}M
+            {typeof stats.totalViews === 'number' ? (stats.totalViews / 1000000).toFixed(1) + 'M' : '0'}
           </div>
           <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
             visualizaciones
           </div>
         </motion.div>
       </div>
-
       {/* Barra de progreso semanal */}
       <div className="mt-6">
         <div className="flex items-center justify-between text-sm mb-2">
@@ -265,7 +273,9 @@ export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
           />
         </div>
         {weeklyProgress < 100 ? (
-            <p className={`text-xs ${textSecondary} mt-1`}>¡Sube {weeklyGoal - videosThisWeek} video(s) más esta semana para completar tu meta! 🎯</p>
+            <p className={`text-xs ${textSecondary} mt-1`}>
+              ¡Sube {Math.max(weeklyGoal - videosThisWeek, 0)} video(s) más esta semana para completar tu meta! 🎯
+            </p>
         ) : (
             <p className={`text-xs text-green-500 mt-1 flex items-center gap-1 font-semibold`}>
                 <Check className="w-4 h-4"/>
