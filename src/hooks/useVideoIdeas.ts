@@ -464,6 +464,7 @@ export const useVideoIdeas = () => {
     reorderIdeas,
     getIdeasByGroup,
     getTopIdeas,
+    getUngroupedIdeas,
     
     // Refresh
     refresh: loadData
