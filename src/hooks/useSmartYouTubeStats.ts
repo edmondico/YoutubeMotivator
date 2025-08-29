@@ -252,7 +252,7 @@ export const useSmartYouTubeStats = (channelId?: string) => {
       }
 
       // Si tenemos quota disponible, usar API real
-      if (isRealStatsConfigured && realStatsData) {
+      if (isRealStatsConfigured() && realStatsData) {
         setSmartData({
           stats: realStatsData,
           dataSource: 'api',
@@ -360,7 +360,7 @@ export const useSmartYouTubeStats = (channelId?: string) => {
     refresh,
     getMotivationalMessage,
     getProgressColor,
-    isConfigured: isRealStatsConfigured,
+    isConfigured: () => isRealStatsConfigured(),
     getSubscriberGrowthHistory: (days?: number) => getSubscriberGrowthHistory(channelId || '', days),
   };
 };
