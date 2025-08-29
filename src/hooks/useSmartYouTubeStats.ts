@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { YouTubeStats } from '@/types';
 import { useYouTubeDataPersistence } from './useYouTubeDataPersistence';
 import { useRealYouTubeStats } from './useRealYouTubeStats';
@@ -29,6 +29,7 @@ export const useSmartYouTubeStats = (channelId?: string) => {
 
   const { user } = useAuth();
   const supabase = createClientComponentClient();
+  const lastFetchRef = useRef<Date | null>(null);
   
   // Hooks para diferentes fuentes de datos
   const { 
@@ -47,7 +48,7 @@ export const useSmartYouTubeStats = (channelId?: string) => {
   } = useYouTubeDataPersistence();
 
   // Obtener datos históricos más recientes de la BD
-  const getLatestHistoricalData = useCallback(async (): Promise<YouTubeStats | null> => {
+  const getLatestHistoricalData = async (): Promise<YouTubeStats | null> => {
     if (!user || !channelId) return null;
 
     try {
@@ -117,214 +118,206 @@ export const useSmartYouTubeStats = (channelId?: string) => {
       console.error('Error getting historical data:', error);
       return null;
     }
-  }, [user, channelId, supabase]);
+  };
 
   // Check if data is fresh (less than 2 hours old)
-  const isDataFresh = useCallback((lastUpdated: Date | null) => {
+  const isDataFresh = (lastUpdated: Date | null) => {
     if (!lastUpdated) return false;
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago
     return lastUpdated > twoHoursAgo;
-  }, []);
+  };
 
-  // Función principal para obtener datos de la mejor fuente disponible
-  const fetchSmartData = useCallback(async () => {
-    if (!user || !channelId) {
-      setSmartData({
-        stats: null,
-        dataSource: 'cache',
-        loading: false,
-        error: 'Usuario no autenticado o canal no configurado',
-        quotaExceeded: false,
-        lastUpdated: null
-      });
-      return;
-    }
+  const [refreshIndex, setRefreshIndex] = useState(0);
 
-    setSmartData(prev => ({ ...prev, loading: true, error: null }));
+  
 
-    try {
-      // Primero, intentar datos en caché si son frescos (menos de 2 horas)
-      if (cachedStatsData.channel) {
-        const cachedChannel = cachedStatsData.channel;
-        const lastUpdatedTime = new Date(cachedChannel.lastUpdated);
+  useEffect(() => {
+    const fetchSmartData = async () => {
+      const now = new Date();
+      if (lastFetchRef.current && (now.getTime() - lastFetchRef.current.getTime()) < 5000) {
+        return;
+      }
+      lastFetchRef.current = now;
+
+      if (!user || !channelId) {
+        setSmartData({
+          stats: null,
+          dataSource: 'cache',
+          loading: false,
+          error: 'Usuario no autenticado o canal no configurado',
+          quotaExceeded: false,
+          lastUpdated: null
+        });
+        return;
+      }
+
+      setSmartData(prev => ({ ...prev, loading: true, error: null }));
+
+      try {
+        if (cachedStatsData.channel) {
+          const cachedChannel = cachedStatsData.channel;
+          const lastUpdatedTime = new Date(cachedChannel.lastUpdated);
+          
+          if (isDataFresh(lastUpdatedTime)) {
+            const stats: YouTubeStats = {
+              subscriberCount: cachedChannel.subscriberCount,
+              lastVideoDate: cachedStatsData.videos.length > 0 
+                ? new Date(cachedStatsData.videos[0].publishedAt)
+                : new Date(cachedChannel.lastUpdated),
+              daysSinceLastVideo: cachedStatsData.videos.length > 0
+                ? Math.floor((Date.now() - new Date(cachedStatsData.videos[0].publishedAt).getTime()) / (1000 * 60 * 60 * 24))
+                : Math.floor((Date.now() - new Date(cachedChannel.lastUpdated).getTime()) / (1000 * 60 * 60 * 24)),
+              dailySubGrowth: 0,
+              lastVideoSubGrowth: 0,
+              totalViews: cachedChannel.viewCount,
+              averageViewsPerVideo: cachedChannel.videoCount > 0 
+                ? Math.floor(cachedChannel.viewCount / cachedChannel.videoCount)
+                : 0,
+              channelId: cachedChannel.id,
+              customUrl: cachedChannel.customUrl || '',
+              weeklySubGrowth: 0,
+            };
+
+            setSmartData({
+              stats,
+              dataSource: 'cache',
+              loading: false,
+              error: null,
+              quotaExceeded: false,
+              lastUpdated: lastUpdatedTime
+            });
+            return;
+          }
+        }
+
+        const isQuotaExceeded = await shouldUseCachedData();
         
-        if (isDataFresh(lastUpdatedTime)) {
-          const stats: YouTubeStats = {
-            subscriberCount: cachedChannel.subscriberCount,
-            lastVideoDate: cachedStatsData.videos.length > 0 
-              ? new Date(cachedStatsData.videos[0].publishedAt)
-              : new Date(cachedChannel.lastUpdated),
-            daysSinceLastVideo: cachedStatsData.videos.length > 0
-              ? Math.floor((Date.now() - new Date(cachedStatsData.videos[0].publishedAt).getTime()) / (1000 * 60 * 60 * 24))
-              : Math.floor((Date.now() - new Date(cachedChannel.lastUpdated).getTime()) / (1000 * 60 * 60 * 24)),
-            dailySubGrowth: 0, // Will be calculated from historical data
-            lastVideoSubGrowth: 0,
-            totalViews: cachedChannel.viewCount,
-            averageViewsPerVideo: cachedChannel.videoCount > 0 
-              ? Math.floor(cachedChannel.viewCount / cachedChannel.videoCount)
-              : 0,
-            channelId: cachedChannel.id,
-            customUrl: cachedChannel.customUrl || '',
-            weeklySubGrowth: 0, // Will be calculated from historical data
-          };
+        if (isQuotaExceeded) {
+          setSmartData(prev => ({ ...prev, quotaExceeded: true }));
+          
+          const historicalData = await getLatestHistoricalData();
+          if (historicalData) {
+            setSmartData({
+              stats: historicalData,
+              dataSource: 'historical',
+              loading: false,
+              error: null,
+              quotaExceeded: true,
+              lastUpdated: new Date()
+            });
+            return;
+          }
 
-          console.log('Using fresh cached data (less than 2 hours old)');
+          if (cachedStatsData.channel) {
+            const cachedChannel = cachedStatsData.channel;
+            const stats: YouTubeStats = {
+              subscriberCount: cachedChannel.subscriberCount,
+              lastVideoDate: cachedStatsData.videos.length > 0 
+                ? new Date(cachedStatsData.videos[0].publishedAt)
+                : new Date(cachedChannel.lastUpdated),
+              daysSinceLastVideo: cachedStatsData.videos.length > 0
+                ? Math.floor((Date.now() - new Date(cachedStatsData.videos[0].publishedAt).getTime()) / (1000 * 60 * 60 * 24))
+                : Math.floor((Date.now() - new Date(cachedChannel.lastUpdated).getTime()) / (1000 * 60 * 60 * 24)),
+              dailySubGrowth: 0,
+              lastVideoSubGrowth: 0,
+              totalViews: cachedChannel.viewCount,
+              averageViewsPerVideo: cachedChannel.videoCount > 0 
+                ? Math.floor(cachedChannel.viewCount / cachedChannel.videoCount)
+                : 0,
+              channelId: cachedChannel.id,
+              customUrl: cachedChannel.customUrl || '',
+              weeklySubGrowth: 0,
+            };
+
+            setSmartData({
+              stats,
+              dataSource: 'cache',
+              loading: false,
+              error: 'Quota excedida - usando datos guardados',
+              quotaExceeded: true,
+              lastUpdated: new Date(cachedChannel.lastUpdated)
+            });
+            return;
+          }
+
           setSmartData({
-            stats,
+            stats: null,
             dataSource: 'cache',
             loading: false,
-            error: null,
-            quotaExceeded: false,
-            lastUpdated: lastUpdatedTime
+            error: 'Quota API excedida y no hay datos guardados disponibles',
+            quotaExceeded: true,
+            lastUpdated: null
           });
           return;
         }
-      }
 
-      // Si los datos del caché no son frescos, verificar quota antes de llamar API
-      const isQuotaExceeded = await shouldUseCachedData();
-      
-      if (isQuotaExceeded) {
-        console.log('Quota exceeded, using stored data');
-        setSmartData(prev => ({ ...prev, quotaExceeded: true }));
-        
-        // Intentar datos históricos si no hay caché fresco
+        if (isRealStatsConfigured() && realStatsData) {
+          setSmartData({
+            stats: realStatsData,
+            dataSource: 'api',
+            loading: false,
+            error: realStatsError,
+            quotaExceeded: false,
+            lastUpdated: realStatsLastFetch
+          });
+          return;
+        }
+
         const historicalData = await getLatestHistoricalData();
         if (historicalData) {
           setSmartData({
             stats: historicalData,
             dataSource: 'historical',
             loading: false,
-            error: null,
-            quotaExceeded: true,
+            error: 'API no configurada - usando datos históricos',
+            quotaExceeded: false,
             lastUpdated: new Date()
           });
           return;
         }
 
-        // Si hay caché viejo, usarlo como último recurso
-        if (cachedStatsData.channel) {
-          const cachedChannel = cachedStatsData.channel;
-          const stats: YouTubeStats = {
-            subscriberCount: cachedChannel.subscriberCount,
-            lastVideoDate: cachedStatsData.videos.length > 0 
-              ? new Date(cachedStatsData.videos[0].publishedAt)
-              : new Date(cachedChannel.lastUpdated),
-            daysSinceLastVideo: cachedStatsData.videos.length > 0
-              ? Math.floor((Date.now() - new Date(cachedStatsData.videos[0].publishedAt).getTime()) / (1000 * 60 * 60 * 24))
-              : Math.floor((Date.now() - new Date(cachedChannel.lastUpdated).getTime()) / (1000 * 60 * 60 * 24)),
-            dailySubGrowth: 0,
-            lastVideoSubGrowth: 0,
-            totalViews: cachedChannel.viewCount,
-            averageViewsPerVideo: cachedChannel.videoCount > 0 
-              ? Math.floor(cachedChannel.viewCount / cachedChannel.videoCount)
-              : 0,
-            channelId: cachedChannel.id,
-            customUrl: cachedChannel.customUrl || '',
-            weeklySubGrowth: 0,
-          };
-
-          console.log('Using old cached data due to quota limits');
-          setSmartData({
-            stats,
-            dataSource: 'cache',
-            loading: false,
-            error: 'Quota excedida - usando datos guardados',
-            quotaExceeded: true,
-            lastUpdated: new Date(cachedChannel.lastUpdated)
-          });
-          return;
-        }
-
-        // Sin datos disponibles
         setSmartData({
           stats: null,
           dataSource: 'cache',
           loading: false,
-          error: 'Quota API excedida y no hay datos guardados disponibles',
-          quotaExceeded: true,
+          error: 'No hay datos disponibles. Configure su API Key en Configuración.',
+          quotaExceeded: false,
           lastUpdated: null
         });
-        return;
-      }
 
-      // Si tenemos quota disponible, usar API real
-      if (isRealStatsConfigured() && realStatsData) {
+      } catch (error: unknown) {
+        console.error('Error fetching smart data:', error);
         setSmartData({
-          stats: realStatsData,
-          dataSource: 'api',
+          stats: null,
+          dataSource: 'cache',
           loading: false,
-          error: realStatsError,
+          error: error instanceof Error ? error.message : 'Error obteniendo datos',
           quotaExceeded: false,
-          lastUpdated: realStatsLastFetch
+          lastUpdated: null
         });
-        return;
       }
+    };
 
-      // Si la API no está configurada, intentar caché o históricos
-      const historicalData = await getLatestHistoricalData();
-      if (historicalData) {
-        setSmartData({
-          stats: historicalData,
-          dataSource: 'historical',
-          loading: false,
-          error: 'API no configurada - usando datos históricos',
-          quotaExceeded: false,
-          lastUpdated: new Date()
-        });
-        return;
-      }
-
-      // Sin datos disponibles
-      setSmartData({
-        stats: null,
-        dataSource: 'cache',
-        loading: false,
-        error: 'No hay datos disponibles. Configure su API Key en Configuración.',
-        quotaExceeded: false,
-        lastUpdated: null
-      });
-
-    } catch (error: unknown) {
-      console.error('Error fetching smart data:', error);
-      setSmartData({
-        stats: null,
-        dataSource: 'cache',
-        loading: false,
-        error: error instanceof Error ? error.message : 'Error obteniendo datos',
-        quotaExceeded: false,
-        lastUpdated: null
-      });
-    }
-  }, [
-    user,
-    channelId,
-    cachedStatsData,
-    getLatestHistoricalData,
-    isDataFresh,
-    isRealStatsConfigured,
-    realStatsData,
-    realStatsError,
-    realStatsLastFetch,
-    shouldUseCachedData
-  ]);
-
-  // Cargar datos al montar
-  useEffect(() => {
     fetchSmartData();
-  }, [fetchSmartData]);
 
-  // Auto-refresh cada 15 minutos
-  useEffect(() => {
     const interval = setInterval(fetchSmartData, 15 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [fetchSmartData]);
+  }, [
+    user, 
+    channelId, 
+    supabase, 
+    cachedStatsData, 
+    isDataFresh, 
+    shouldUseCachedData, 
+    getLatestHistoricalData, 
+    isRealStatsConfigured, 
+    realStatsData, 
+    realStatsError, 
+    realStatsLastFetch,
+    refreshIndex
+  ]);
 
-  const refresh = useCallback(() => {
-    fetchSmartData();
-  }, [fetchSmartData]);
-
-  const getMotivationalMessage = useCallback(() => {
+  const getMotivationalMessage = () => {
     if (!smartData.stats) {
       return smartData.error || "Configure su canal para ver estadísticas";
     }
@@ -344,14 +337,14 @@ export const useSmartYouTubeStats = (channelId?: string) => {
     } else {
       return `🚨 ¡${stats.daysSinceLastVideo} días sin contenido! ¡Es momento de crear!`;
     }
-  }, [smartData]);
+  };
 
-  const getProgressColor = useCallback(() => {
+  const getProgressColor = () => {
     if (!smartData.stats) return 'text-gray-500';
     if (smartData.stats.daysSinceLastVideo < 3) return 'text-green-600';
     if (smartData.stats.daysSinceLastVideo < 7) return 'text-yellow-600';
     return 'text-red-600';
-  }, [smartData]);
+  };
 
   return {
     ...smartData,
