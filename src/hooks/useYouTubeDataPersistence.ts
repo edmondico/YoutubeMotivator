@@ -35,7 +35,14 @@ export const useYouTubeDataPersistence = () => {
 
   // Save daily stats snapshot
   const saveDailyStats = useCallback(async (data: YouTubeDataSnapshot) => {
-    if (!user || !data.channelId) return false;
+    if (!user) {
+      setError('Debes iniciar sesión para guardar estadísticas.');
+      return false;
+    }
+    if (!data.channelId) {
+      setError('No hay canal configurado para guardar estadísticas.');
+      return false;
+    }
 
     setSaving(true);
     setError(null);
@@ -121,7 +128,10 @@ export const useYouTubeDataPersistence = () => {
 
   // Track API quota usage
   const trackAPIUsage = useCallback(async (quotaUsed: number = 100, callsCount: number = 1) => {
-    if (!user) return;
+    if (!user) {
+      setError('Debes iniciar sesión para registrar el uso de la API.');
+      return;
+    }
 
     try {
       const today = new Date().toISOString().split('T')[0];
@@ -152,7 +162,11 @@ export const useYouTubeDataPersistence = () => {
 
   // Check for and save milestones
   const checkAndSaveMilestones = useCallback(async (data: MilestoneData[]) => {
-    if (!user || !data.length) return;
+    if (!user) {
+      setError('Debes iniciar sesión para guardar logros.');
+      return;
+    }
+    if (!data.length) return;
 
     try {
       for (const milestone of data) {
@@ -187,7 +201,14 @@ export const useYouTubeDataPersistence = () => {
 
   // Get subscriber growth history
   const getSubscriberGrowthHistory = useCallback(async (channelId: string, days: number = 30) => {
-    if (!user || !channelId) return null;
+    if (!user) {
+      setError('Debes iniciar sesión para ver el historial de crecimiento.');
+      return null;
+    }
+    if (!channelId) {
+      setError('No hay canal configurado para ver el historial de crecimiento.');
+      return null;
+    }
 
     try {
       const startDate = new Date();
@@ -212,7 +233,10 @@ export const useYouTubeDataPersistence = () => {
 
   // Get today's quota usage
   const getTodaysQuotaUsage = useCallback(async () => {
-    if (!user) return null;
+    if (!user) {
+      setError('Debes iniciar sesión para ver el uso de la cuota.');
+      return null;
+    }
 
     try {
       const today = new Date().toISOString().split('T')[0];

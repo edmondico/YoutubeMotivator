@@ -145,12 +145,23 @@ export const useSmartYouTubeStats = (channelId?: string) => {
       }
       lastFetchRef.current = now;
 
-      if (!user || !channelId) {
+      if (!user) {
         setSmartData({
           stats: null,
           dataSource: 'cache',
           loading: false,
-          error: 'Usuario no autenticado o canal no configurado',
+          error: 'Debes iniciar sesión para ver tus estadísticas de YouTube.',
+          quotaExceeded: false,
+          lastUpdated: null
+        });
+        return;
+      }
+      if (!channelId) {
+        setSmartData({
+          stats: null,
+          dataSource: 'cache',
+          loading: false,
+          error: 'No hay canal configurado. Ve a Configuración para agregar tu canal.',
           quotaExceeded: false,
           lastUpdated: null
         });
@@ -160,10 +171,23 @@ export const useSmartYouTubeStats = (channelId?: string) => {
       setSmartData(prev => ({ ...prev, loading: true, error: null }));
 
       try {
+        // 1. Si hay datos de la API y está configurada, usarlos
+        if (isRealStatsConfigured() && realStatsData) {
+          setSmartData({
+            stats: realStatsData,
+            dataSource: 'api',
+            loading: false,
+            error: realStatsError,
+            quotaExceeded: false,
+            lastUpdated: realStatsLastFetch
+          });
+          return;
+        }
+
+        // 2. Si hay datos en caché frescos, usarlos
         if (cachedStatsData.channel) {
           const cachedChannel = cachedStatsData.channel;
           const lastUpdatedTime = new Date(cachedChannel.lastUpdated);
-          
           if (isDataFresh(lastUpdatedTime)) {
             const stats: YouTubeStats = {
               subscriberCount: cachedChannel.subscriberCount,
@@ -183,7 +207,6 @@ export const useSmartYouTubeStats = (channelId?: string) => {
               customUrl: cachedChannel.customUrl || '',
               weeklySubGrowth: 0,
             };
-
             setSmartData({
               stats,
               dataSource: 'cache',
@@ -196,92 +219,53 @@ export const useSmartYouTubeStats = (channelId?: string) => {
           }
         }
 
-        const isQuotaExceeded = await shouldUseCachedData();
-        
-        if (isQuotaExceeded) {
-          setSmartData(prev => ({ ...prev, quotaExceeded: true }));
-          
-          const historicalData = await getLatestHistoricalData();
-          if (historicalData) {
-            setSmartData({
-              stats: historicalData,
-              dataSource: 'historical',
-              loading: false,
-              error: null,
-              quotaExceeded: true,
-              lastUpdated: new Date()
-            });
-            return;
-          }
-
-          if (cachedStatsData.channel) {
-            const cachedChannel = cachedStatsData.channel;
-            const stats: YouTubeStats = {
-              subscriberCount: cachedChannel.subscriberCount,
-              lastVideoDate: cachedStatsData.videos.length > 0 
-                ? new Date(cachedStatsData.videos[0].publishedAt)
-                : new Date(cachedChannel.lastUpdated),
-              daysSinceLastVideo: cachedStatsData.videos.length > 0
-                ? Math.floor((Date.now() - new Date(cachedStatsData.videos[0].publishedAt).getTime()) / (1000 * 60 * 60 * 24))
-                : Math.floor((Date.now() - new Date(cachedChannel.lastUpdated).getTime()) / (1000 * 60 * 60 * 24)),
-              dailySubGrowth: 0,
-              lastVideoSubGrowth: 0,
-              totalViews: cachedChannel.viewCount,
-              averageViewsPerVideo: cachedChannel.videoCount > 0 
-                ? Math.floor(cachedChannel.viewCount / cachedChannel.videoCount)
-                : 0,
-              channelId: cachedChannel.id,
-              customUrl: cachedChannel.customUrl || '',
-              weeklySubGrowth: 0,
-            };
-
-            setSmartData({
-              stats,
-              dataSource: 'cache',
-              loading: false,
-              error: 'Quota excedida - usando datos guardados',
-              quotaExceeded: true,
-              lastUpdated: new Date(cachedChannel.lastUpdated)
-            });
-            return;
-          }
-
-          setSmartData({
-            stats: null,
-            dataSource: 'cache',
-            loading: false,
-            error: 'Quota API excedida y no hay datos guardados disponibles',
-            quotaExceeded: true,
-            lastUpdated: null
-          });
-          return;
-        }
-
-        if (isRealStatsConfigured() && realStatsData) {
-          setSmartData({
-            stats: realStatsData,
-            dataSource: 'api',
-            loading: false,
-            error: realStatsError,
-            quotaExceeded: false,
-            lastUpdated: realStatsLastFetch
-          });
-          return;
-        }
-
+        // 3. Si hay datos históricos en Supabase, usarlos
         const historicalData = await getLatestHistoricalData();
         if (historicalData) {
           setSmartData({
             stats: historicalData,
             dataSource: 'historical',
             loading: false,
-            error: 'API no configurada - usando datos históricos',
+            error: 'API no configurada o error - usando datos históricos',
             quotaExceeded: false,
             lastUpdated: new Date()
           });
           return;
         }
 
+        // 4. Si hay datos en caché aunque no sean frescos, usarlos como último recurso
+        if (cachedStatsData.channel) {
+          const cachedChannel = cachedStatsData.channel;
+          const stats: YouTubeStats = {
+            subscriberCount: cachedChannel.subscriberCount,
+            lastVideoDate: cachedStatsData.videos.length > 0 
+              ? new Date(cachedStatsData.videos[0].publishedAt)
+              : new Date(cachedChannel.lastUpdated),
+            daysSinceLastVideo: cachedStatsData.videos.length > 0
+              ? Math.floor((Date.now() - new Date(cachedStatsData.videos[0].publishedAt).getTime()) / (1000 * 60 * 60 * 24))
+              : Math.floor((Date.now() - new Date(cachedChannel.lastUpdated).getTime()) / (1000 * 60 * 60 * 24)),
+            dailySubGrowth: 0,
+            lastVideoSubGrowth: 0,
+            totalViews: cachedChannel.viewCount,
+            averageViewsPerVideo: cachedChannel.videoCount > 0 
+              ? Math.floor(cachedChannel.viewCount / cachedChannel.videoCount)
+              : 0,
+            channelId: cachedChannel.id,
+            customUrl: cachedChannel.customUrl || '',
+            weeklySubGrowth: 0,
+          };
+          setSmartData({
+            stats,
+            dataSource: 'cache',
+            loading: false,
+            error: 'Usando datos guardados locales',
+            quotaExceeded: true,
+            lastUpdated: new Date(cachedChannel.lastUpdated)
+          });
+          return;
+        }
+
+        // 5. Si no hay nada, mostrar error
         setSmartData({
           stats: null,
           dataSource: 'cache',
@@ -290,7 +274,6 @@ export const useSmartYouTubeStats = (channelId?: string) => {
           quotaExceeded: false,
           lastUpdated: null
         });
-
       } catch (error: unknown) {
         console.error('Error fetching smart data:', error);
         setSmartData({
