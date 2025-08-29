@@ -1,0 +1,1 @@
+ALTER TABLE video_ideas ALTER COLUMN group_id DROP NOT NULL;

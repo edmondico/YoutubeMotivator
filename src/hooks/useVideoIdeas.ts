@@ -38,7 +38,7 @@ export const useVideoIdeas = () => {
   const [error, setError] = useState<string | null>(null);
 
   const { user } = useAuth();
-  const supabase = createClient();
+  const supabase = createClientComponentClient();
 
   // Initialize default groups if none exist
   const initializeDefaultGroups = useCallback(async () => {
@@ -210,10 +210,10 @@ export const useVideoIdeas = () => {
     if (!user) return false;
 
     try {
-      // First, delete all ideas in this group
+      // First, update all ideas in this group to be ungrouped
       await supabase
         .from('video_ideas')
-        .delete()
+        .update({ group_id: null })
         .eq('group_id', id)
         .eq('user_id', user.id);
 
@@ -227,7 +227,7 @@ export const useVideoIdeas = () => {
       if (error) throw error;
       
       setGroups(prev => prev.filter(g => g.id !== id));
-      setIdeas(prev => prev.filter(i => i.group_id !== id));
+      setIdeas(prev => prev.map(i => i.group_id === id ? { ...i, group_id: null } : i));
       return true;
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -327,33 +327,71 @@ export const useVideoIdeas = () => {
   }, [user, supabase]);
 
   // Reorder ideas within a group
-  const reorderIdeas = useCallback(async (groupId: string, ideaIds: string[]) => {
+  const reorderIdeas = useCallback(async (source: { droppableId: string, index: number }, destination: { droppableId: string, index: number }, draggableId: string) => {
     if (!user) return false;
 
-    try {
-      const updates = ideaIds.map((ideaId, index) => ({
-        id: ideaId,
-        sort_order: index
-      }));
+    const { source: sourceInfo, destination: destInfo, draggableId: ideaId } = { source, destination, draggableId };
 
-      for (const update of updates) {
-        await supabase
-          .from('video_ideas')
-          .update({ sort_order: update.sort_order })
-          .eq('id', update.id)
-          .eq('user_id', user.id);
+    const idea = ideas.find(i => i.id === ideaId);
+    if (!idea) return false;
+
+    const sourceGroupId = sourceInfo.droppableId === 'ungrouped' ? null : sourceInfo.droppableId;
+    const destGroupId = destInfo.droppableId === 'ungrouped' ? null : destInfo.droppableId;
+
+    // Optimistic update
+    const newIdeas = Array.from(ideas);
+    const [movedIdea] = newIdeas.splice(newIdeas.findIndex(i => i.id === ideaId), 1);
+    movedIdea.group_id = destGroupId;
+
+    const destIdeas = newIdeas.filter(i => i.group_id === destGroupId);
+    destIdeas.splice(destInfo.index, 0, movedIdea);
+
+    // Update sort order for destination list
+    destIdeas.forEach((item, index) => {
+      item.sort_order = index;
+    });
+
+    // Update sort order for source list if different
+    if (sourceGroupId !== destGroupId) {
+      const sourceIdeas = newIdeas.filter(i => i.group_id === sourceGroupId);
+      sourceIdeas.forEach((item, index) => {
+        item.sort_order = index;
+      });
+    }
+
+    setIdeas(newIdeas);
+
+    try {
+      // Update moved idea in DB
+      await supabase
+        .from('video_ideas')
+        .update({ group_id: destGroupId, sort_order: destInfo.index })
+        .eq('id', ideaId)
+        .eq('user_id', user.id);
+
+      // Update sort order of other ideas in destination group
+      for (let i = 0; i < destIdeas.length; i++) {
+        if (destIdeas[i].id !== ideaId) {
+          await supabase
+            .from('video_ideas')
+            .update({ sort_order: i })
+            .eq('id', destIdeas[i].id)
+            .eq('user_id', user.id);
+        }
       }
 
-      setIdeas(prev => 
-        prev.map(idea => {
-          const newOrderIndex = ideaIds.indexOf(idea.id);
-          return newOrderIndex >= 0 ? { ...idea, sort_order: newOrderIndex } : idea;
-        }).sort((a, b) => {
-          if (a.group_id !== b.group_id) return 0;
-          return a.sort_order - b.sort_order;
-        })
-      );
-      
+      // Update sort order of ideas in source group if different
+      if (sourceGroupId !== destGroupId) {
+        const sourceIdeas = ideas.filter(i => i.group_id === sourceGroupId);
+        for (let i = 0; i < sourceIdeas.length; i++) {
+          await supabase
+            .from('video_ideas')
+            .update({ sort_order: i })
+            .eq('id', sourceIdeas[i].id)
+            .eq('user_id', user.id);
+        }
+      }
+
       return true;
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -361,18 +399,24 @@ export const useVideoIdeas = () => {
       } else {
         setError('Error al reordenar ideas');
       }
+      // Rollback optimistic update on error
+      setIdeas(ideas);
       return false;
     }
-  }, [user, supabase]);
+  }, [user, ideas, supabase]);
 
   // Get ideas by group
-  const getIdeasByGroup = useCallback((groupId: string) => {
+  const getIdeasByGroup = useCallback((groupId: string | null) => {
     return ideas
       .filter(idea => idea.group_id === groupId)
       .sort((a, b) => a.sort_order - b.sort_order);
   }, [ideas]);
 
-  // Get top ideas across all groups
+  const getUngroupedIdeas = useCallback(() => {
+    return ideas
+      .filter(idea => idea.group_id === null)
+      .sort((a, b) => a.sort_order - b.sort_order);
+  }, [ideas]);
   const getTopIdeas = useCallback((limit: number = 5) => {
     return [...ideas]
       .sort((a, b) => b.score - a.score)

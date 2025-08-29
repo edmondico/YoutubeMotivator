@@ -37,7 +37,8 @@ export const IdeasView = ({ isDark }: IdeasViewProps) => {
     updateIdea,
     deleteIdea,
     reorderIdeas,
-    getIdeasByGroup 
+    getIdeasByGroup,
+    getUngroupedIdeas
   } = useVideoIdeas();
 
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
@@ -52,14 +53,20 @@ export const IdeasView = ({ isDark }: IdeasViewProps) => {
   const bgInner = isDark ? 'bg-gray-700' : 'bg-gray-50';
 
   const handleDragEnd = async (result: DropResult) => {
-    if (!result.destination || !selectedGroup) return;
-    
-    const items = getIdeasByGroup(selectedGroup).sort((a, b) => a.sort_order - b.sort_order);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-    
-    const reorderedIds = items.map(item => item.id);
-    await reorderIdeas(selectedGroup, reorderedIds);
+    const { source, destination, draggableId } = result;
+
+    if (!destination) {
+      return;
+    }
+
+    if (
+      source.droppableId === destination.droppableId &&
+      source.index === destination.index
+    ) {
+      return;
+    }
+
+    await reorderIdeas(source, destination, draggableId);
   };
   
   const hoverBg = isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-100';
@@ -182,6 +189,32 @@ export const IdeasView = ({ isDark }: IdeasViewProps) => {
           <h3 className={`text-lg font-semibold ${textPrimary} mb-4`}>Grupos</h3>
           
           <div className="space-y-2">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setSelectedGroup('ungrouped')}
+              className={`w-full text-left p-3 rounded-lg border-2 transition-colors ${
+                selectedGroup === 'ungrouped'
+                  ? 'border-current'
+                  : 'border-transparent hover:border-gray-300'
+              }`}
+              style={{ 
+                backgroundColor: selectedGroup === 'ungrouped' ? '#A0A0A020' : 'transparent',
+                borderColor: selectedGroup === 'ungrouped' ? '#A0A0A0' : 'transparent'
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className={`font-medium ${textPrimary}`} style={{ color: selectedGroup === 'ungrouped' ? '#A0A0A0' : undefined }}>
+                    Banco de Ideas General
+                  </div>
+                  <div className={`text-xs ${textSecondary}`}>
+                    {getUngroupedIdeas().length} ideas
+                  </div>
+                </div>
+              </div>
+            </motion.button>
+
             {groups.map((group) => (
               <motion.button
                 key={group.id}
@@ -224,28 +257,28 @@ export const IdeasView = ({ isDark }: IdeasViewProps) => {
 
         {/* Ideas main area */}
         <div className="lg:col-span-3 space-y-4">
-          {selectedGroup ? (
-            <div className={`${bgCard} rounded-xl p-6 border`}>
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className={`text-xl font-bold ${textPrimary}`}>
-                    {groups.find(g => g.id === selectedGroup)?.name}
-                  </h2>
-                  <p className={textSecondary}>
-                    {groups.find(g => g.id === selectedGroup)?.description}
-                  </p>
+          <DragDropContext onDragEnd={handleDragEnd}>
+            {selectedGroup ? (
+              <div className={`${bgCard} rounded-xl p-6 border`}>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className={`text-xl font-bold ${textPrimary}`}>
+                      {selectedGroup === 'ungrouped' ? 'Banco de Ideas General' : groups.find(g => g.id === selectedGroup)?.name}
+                    </h2>
+                    <p className={textSecondary}>
+                      {selectedGroup === 'ungrouped' ? 'Ideas sin agrupar' : groups.find(g => g.id === selectedGroup)?.description}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowAddIdea(true)}
+                    className={`flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors`}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Nueva Idea
+                  </button>
                 </div>
-                <button
-                  onClick={() => setShowAddIdea(true)}
-                  className={`flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors`}
-                >
-                  <Plus className="w-4 h-4" />
-                  Nueva Idea
-                </button>
-              </div>
 
-              {/* Ideas list with drag & drop */}
-              <DragDropContext onDragEnd={handleDragEnd}>
+                {/* Ideas list with drag & drop */}
                 <Droppable droppableId={selectedGroup}>
                   {(provided, snapshot) => (
                     <div
@@ -253,7 +286,7 @@ export const IdeasView = ({ isDark }: IdeasViewProps) => {
                       ref={provided.innerRef}
                       className={`space-y-3 ${snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-900/20' : ''} transition-colors rounded-lg p-2`}
                     >
-                      {getIdeasByGroup(selectedGroup)
+                      {(selectedGroup === 'ungrouped' ? getUngroupedIdeas() : getIdeasByGroup(selectedGroup))
                         .sort((a, b) => a.sort_order - b.sort_order)
                         .map((idea, index) => (
                         <Draggable key={idea.id} draggableId={idea.id} index={index}>
@@ -337,23 +370,23 @@ export const IdeasView = ({ isDark }: IdeasViewProps) => {
                     </div>
                   )}
                 </Droppable>
-              </DragDropContext>
-              
-              {getIdeasByGroup(selectedGroup).length === 0 && (
-                <div className={`text-center py-8 ${textSecondary}`}>
-                  <Lightbulb className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No hay ideas en este grupo</p>
-                  <p className="text-sm">Añade tu primera idea!</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className={`${bgCard} rounded-xl p-8 border text-center`}>
-              <Lightbulb className={`w-16 h-16 mx-auto mb-4 ${textSecondary} opacity-50`} />
-              <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>Selecciona un grupo</h3>
-              <p className={textSecondary}>Elige un grupo de la izquierda para ver y gestionar tus ideas</p>
-            </div>
-          )}
+                
+                {(selectedGroup === 'ungrouped' ? getUngroupedIdeas() : getIdeasByGroup(selectedGroup)).length === 0 && (
+                  <div className={`text-center py-8 ${textSecondary}`}>
+                    <Lightbulb className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p>No hay ideas aquí</p>
+                    <p className="text-sm">Añade tu primera idea!</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className={`${bgCard} rounded-xl p-8 border text-center`}>
+                <Lightbulb className={`w-16 h-16 mx-auto mb-4 ${textSecondary} opacity-50`} />
+                <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>Selecciona un grupo o el banco general</h3>
+                <p className={textSecondary}>Elige un grupo de la izquierda para ver y gestionar tus ideas</p>
+              </div>
+            )}
+          </DragDropContext>
         </div>
       </div>
 
@@ -395,12 +428,13 @@ export const IdeasView = ({ isDark }: IdeasViewProps) => {
 
       {/* Add Idea Modal */}
       <AnimatePresence>
-        {showAddIdea && selectedGroup && (
+        {showAddIdea && (
           <IdeaModal
             isOpen={showAddIdea}
             onClose={() => setShowAddIdea(false)}
             onSave={async (title, description, score, priority, tags, notes, estimatedDuration) => {
-              await addIdea(selectedGroup, title, description, score);
+              const groupId = selectedGroup === 'ungrouped' ? null : selectedGroup;
+              await addIdea(groupId, title, description, score);
               if (tags.length > 0 || notes || priority !== 'medium' || estimatedDuration) {
                 const newIdea = ideas[ideas.length - 1];
                 if (newIdea) {
