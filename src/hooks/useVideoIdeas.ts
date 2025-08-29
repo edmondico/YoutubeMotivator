@@ -458,7 +458,7 @@ export const useVideoIdeas = () => {
     deleteGroup,
     
     // Idea methods
-    addIdea,
+    addIdea: addIdea as (groupId: string | null, title: string, description?: string, score?: number) => Promise<VideoIdea | null>,
     updateIdea,
     deleteIdea,
     reorderIdeas,

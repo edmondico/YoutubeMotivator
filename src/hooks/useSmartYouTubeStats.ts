@@ -6,7 +6,7 @@ import { useYouTubeDataPersistence } from './useYouTubeDataPersistence';
 import { useRealYouTubeStats } from './useRealYouTubeStats';
 import { useCachedYouTubeStats } from './useCachedYouTubeStats';
 import { useAuth } from '@/components/AuthProvider';
-import { createClient } from '@/utils/supabase/client';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 interface SmartYouTubeData {
   stats: YouTubeStats | null;
