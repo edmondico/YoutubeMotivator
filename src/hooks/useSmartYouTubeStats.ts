@@ -48,7 +48,7 @@ export const useSmartYouTubeStats = (channelId?: string) => {
   } = useYouTubeDataPersistence();
 
   // Obtener datos históricos más recientes de la BD
-  const getLatestHistoricalData = async (): Promise<YouTubeStats | null> => {
+  const getLatestHistoricalData = useCallback(async (): Promise<YouTubeStats | null> => {
     if (!user || !channelId) return null;
 
     try {
@@ -118,16 +118,22 @@ export const useSmartYouTubeStats = (channelId?: string) => {
       console.error('Error getting historical data:', error);
       return null;
     }
-  };
+  }, [user, channelId, supabase]);
 
   // Check if data is fresh (less than 2 hours old)
-  const isDataFresh = (lastUpdated: Date | null) => {
+  const isDataFresh = useCallback((lastUpdated: Date | null) => {
     if (!lastUpdated) return false;
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago
     return lastUpdated > twoHoursAgo;
-  };
+  }, []);
+
 
   const [refreshIndex, setRefreshIndex] = useState(0);
+
+  // Expose a refresh function to manually trigger data reload
+  const refresh = useCallback(() => {
+    setRefreshIndex((prev) => prev + 1);
+  }, []);
 
   
 
