@@ -18,7 +18,8 @@
       "mcp__filesystem__list_directory",
       "mcp__filesystem__read_multiple_files",
       "mcp__brave__brave_web_search",
-      "WebFetch(domain:blog.hootsuite.com)"
+      "WebFetch(domain:blog.hootsuite.com)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": []

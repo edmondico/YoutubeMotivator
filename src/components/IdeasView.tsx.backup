@@ -61,7 +61,6 @@ export const IdeasView = ({ isDark }: IdeasViewProps) => {
     const reorderedIds = items.map(item => item.id);
     await reorderIdeas(selectedGroup, reorderedIds);
   };
-  
   const hoverBg = isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-100';
 
   const getStatusIcon = (status: VideoIdea['status']) => {
@@ -168,10 +167,8 @@ export const IdeasView = ({ isDark }: IdeasViewProps) => {
             <div className={`text-2xl font-bold text-blue-600`}>{stats.ideasByStatus.scripting + stats.ideasByStatus.filming + stats.ideasByStatus.editing}</div>
             <div className={`text-sm ${textSecondary}`}>En Proceso</div>
           </div>
-          <div className={`${bgInner} rounded-lg p-4 text-center`}>
-            <div className={`text-2xl font-bold text-green-600`}>{stats.ideasByStatus.uploaded}</div>
-            <div className={`text-sm ${textSecondary}`}>Completadas</div>
-          </div>
+          <div className={`text-2xl font-bold text-green-600`}>{stats.ideasByStatus.uploaded}</div>
+          <div className={`text-sm ${textSecondary}`}>Completadas</div>
         </div>
       </div>
 
@@ -254,7 +251,7 @@ export const IdeasView = ({ isDark }: IdeasViewProps) => {
                       className={`space-y-3 ${snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-900/20' : ''} transition-colors rounded-lg p-2`}
                     >
                       {getIdeasByGroup(selectedGroup)
-                        .sort((a, b) => a.sort_order - b.sort_order)
+                        .sort((a, b) => a.sort_order - b.sort_order) // Sort by manual order
                         .map((idea, index) => (
                         <Draggable key={idea.id} draggableId={idea.id} index={index}>
                           {(provided, snapshot) => (
@@ -346,6 +343,7 @@ export const IdeasView = ({ isDark }: IdeasViewProps) => {
                   <p className="text-sm">Añade tu primera idea!</p>
                 </div>
               )}
+              </div>
             </div>
           ) : (
             <div className={`${bgCard} rounded-xl p-8 border text-center`}>
@@ -402,7 +400,7 @@ export const IdeasView = ({ isDark }: IdeasViewProps) => {
             onSave={async (title, description, score, priority, tags, notes, estimatedDuration) => {
               await addIdea(selectedGroup, title, description, score);
               if (tags.length > 0 || notes || priority !== 'medium' || estimatedDuration) {
-                const newIdea = ideas[ideas.length - 1];
+                const newIdea = ideas[ideas.length - 1]; // Get the last added idea
                 if (newIdea) {
                   await updateIdea(newIdea.id, { 
                     tags, 
