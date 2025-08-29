@@ -77,7 +77,7 @@ export interface AppConfig {
   };
 }
 
-export type ViewMode = 'dashboard' | 'calendar' | 'analytics' | 'youtube-analytics' | 'profile' | 'config';
+export type ViewMode = 'dashboard' | 'calendar' | 'analytics' | 'youtube-analytics' | 'ideas' | 'profile' | 'config';
 
 export interface WeekDay {
   date: Date;
@@ -104,4 +104,31 @@ export interface OnboardingGoals {
   streakTarget: number;
   subscribersTarget: number;
   subscribersTargetDate: string; // ISO date string
+}
+
+export interface IdeaGroup {
+  id: string;
+  name: string;
+  description?: string;
+  color: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VideoIdea {
+  id: string;
+  group_id: string;
+  title: string;
+  description?: string;
+  score: number; // 1-10
+  tags: string[];
+  notes?: string;
+  status: 'idea' | 'scripting' | 'filming' | 'editing' | 'uploaded';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  estimated_duration?: number;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+  completed_at?: string;
 }

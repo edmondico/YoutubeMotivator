@@ -1,7 +1,7 @@
 'use client';
 
 import { ViewMode } from '@/types';
-import { Home, Calendar, BarChart3, Settings, Moon, Sun, Youtube, User } from 'lucide-react';
+import { Home, Calendar, BarChart3, Settings, Moon, Sun, Youtube, User, Lightbulb } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { NotificationCenter } from './NotificationCenter';
 import { useAppConfig } from '@/hooks/useAppConfig';
@@ -40,6 +40,13 @@ const navItems = [
     icon: Youtube,
     emoji: '🚀',
     description: 'Análisis del canal de YouTube'
+  },
+  {
+    id: 'ideas' as ViewMode,
+    label: 'Ideas',
+    icon: Lightbulb,
+    emoji: '💡',
+    description: 'Banco de ideas para videos'
   },
   {
     id: 'profile' as ViewMode,

@@ -214,11 +214,11 @@ export const useCachedYouTubeStats = (channelId?: string) => {
         videos: videos
       });
 
-      // Check for milestones (every 1000 subs, 100 videos, 1M views)
+      // Check for milestones (starting from 11K since user already has 10.4K subs)
       const milestones = [];
-      const subMilestones = [1000, 5000, 10000, 50000, 100000, 500000, 1000000];
-      const viewMilestones = [1000000, 5000000, 10000000, 50000000, 100000000];
-      const videoMilestones = [10, 50, 100, 500, 1000];
+      const subMilestones = [11000, 15000, 20000, 25000, 30000, 50000, 100000, 250000, 500000, 1000000];
+      const viewMilestones = [1000000, 2000000, 5000000, 10000000, 25000000, 50000000, 100000000]; // User has 0.9M, next is 1M
+      const videoMilestones = [100, 150, 200, 300, 500, 1000]; // Starting from 100 since user has 77 videos
 
       for (const milestone of subMilestones) {
         if (channelResult.subscriberCount >= milestone) {

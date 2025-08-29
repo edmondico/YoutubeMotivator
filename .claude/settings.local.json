@@ -13,7 +13,12 @@
       "Bash(rm:*)",
       "Bash(git commit:*)",
       "mcp__sequential-thinking__sequentialthinking",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "mcp__filesystem__directory_tree",
+      "mcp__filesystem__list_directory",
+      "mcp__filesystem__read_multiple_files",
+      "mcp__brave__brave_web_search",
+      "WebFetch(domain:blog.hootsuite.com)"
     ],
     "deny": [],
     "ask": []
