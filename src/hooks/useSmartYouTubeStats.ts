@@ -6,7 +6,7 @@ import { useYouTubeDataPersistence } from './useYouTubeDataPersistence';
 import { useRealYouTubeStats } from './useRealYouTubeStats';
 import { useCachedYouTubeStats } from './useCachedYouTubeStats';
 import { useAuth } from '@/components/AuthProvider';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 
 interface SmartYouTubeData {
   stats: YouTubeStats | null;
@@ -28,7 +28,7 @@ export const useSmartYouTubeStats = (channelId?: string) => {
   });
 
   const { user } = useAuth();
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const lastFetchRef = useRef<Date | null>(null);
   
   // Hooks para diferentes fuentes de datos

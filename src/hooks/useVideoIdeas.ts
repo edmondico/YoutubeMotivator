@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import { useAuth } from '@/components/AuthProvider';
 
 export interface IdeaGroup {
@@ -38,7 +38,7 @@ export const useVideoIdeas = () => {
   const [error, setError] = useState<string | null>(null);
 
   const { user } = useAuth();
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
 
   // Initialize default groups if none exist
   const initializeDefaultGroups = useCallback(async () => {
