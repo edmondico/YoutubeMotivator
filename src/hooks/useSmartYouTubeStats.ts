@@ -31,8 +31,18 @@ export const useSmartYouTubeStats = (channelId?: string) => {
   const supabase = createClientComponentClient();
   
   // Hooks para diferentes fuentes de datos
-  const realStats = useRealYouTubeStats();
-  const cachedStats = useCachedYouTubeStats(channelId);
+  const { 
+    stats: realStatsData, 
+    error: realStatsError, 
+    lastFetch: realStatsLastFetch, 
+    isConfigured: isRealStatsConfigured,
+    refreshStats 
+  } = useRealYouTubeStats();
+  const { 
+    data: cachedStatsData, 
+    refresh: refreshCachedStats 
+  } = useCachedYouTubeStats(channelId);
+
   const { 
     getSubscriberGrowthHistory, 
     getTodaysQuotaUsage,
@@ -137,18 +147,18 @@ export const useSmartYouTubeStats = (channelId?: string) => {
 
     try {
       // Primero, intentar datos en caché si son frescos (menos de 2 horas)
-      if (cachedStats.data.channel) {
-        const cachedChannel = cachedStats.data.channel;
+      if (cachedStatsData.channel) {
+        const cachedChannel = cachedStatsData.channel;
         const lastUpdatedTime = new Date(cachedChannel.lastUpdated);
         
         if (isDataFresh(lastUpdatedTime)) {
           const stats: YouTubeStats = {
             subscriberCount: cachedChannel.subscriberCount,
-            lastVideoDate: cachedStats.data.videos.length > 0 
-              ? new Date(cachedStats.data.videos[0].publishedAt)
+            lastVideoDate: cachedStatsData.videos.length > 0 
+              ? new Date(cachedStatsData.videos[0].publishedAt)
               : new Date(cachedChannel.lastUpdated),
-            daysSinceLastVideo: cachedStats.data.videos.length > 0
-              ? Math.floor((Date.now() - new Date(cachedStats.data.videos[0].publishedAt).getTime()) / (1000 * 60 * 60 * 24))
+            daysSinceLastVideo: cachedStatsData.videos.length > 0
+              ? Math.floor((Date.now() - new Date(cachedStatsData.videos[0].publishedAt).getTime()) / (1000 * 60 * 60 * 24))
               : Math.floor((Date.now() - new Date(cachedChannel.lastUpdated).getTime()) / (1000 * 60 * 60 * 24)),
             dailySubGrowth: 0, // Will be calculated from historical data
             lastVideoSubGrowth: 0,
@@ -196,15 +206,15 @@ export const useSmartYouTubeStats = (channelId?: string) => {
         }
 
         // Si hay caché viejo, usarlo como último recurso
-        if (cachedStats.data.channel) {
-          const cachedChannel = cachedStats.data.channel;
+        if (cachedStatsData.channel) {
+          const cachedChannel = cachedStatsData.channel;
           const stats: YouTubeStats = {
             subscriberCount: cachedChannel.subscriberCount,
-            lastVideoDate: cachedStats.data.videos.length > 0 
-              ? new Date(cachedStats.data.videos[0].publishedAt)
+            lastVideoDate: cachedStatsData.videos.length > 0 
+              ? new Date(cachedStatsData.videos[0].publishedAt)
               : new Date(cachedChannel.lastUpdated),
-            daysSinceLastVideo: cachedStats.data.videos.length > 0
-              ? Math.floor((Date.now() - new Date(cachedStats.data.videos[0].publishedAt).getTime()) / (1000 * 60 * 60 * 24))
+            daysSinceLastVideo: cachedStatsData.videos.length > 0
+              ? Math.floor((Date.now() - new Date(cachedStatsData.videos[0].publishedAt).getTime()) / (1000 * 60 * 60 * 24))
               : Math.floor((Date.now() - new Date(cachedChannel.lastUpdated).getTime()) / (1000 * 60 * 60 * 24)),
             dailySubGrowth: 0,
             lastVideoSubGrowth: 0,
@@ -242,14 +252,14 @@ export const useSmartYouTubeStats = (channelId?: string) => {
       }
 
       // Si tenemos quota disponible, usar API real
-      if (realStats.isConfigured() && realStats.stats) {
+      if (isRealStatsConfigured && realStatsData) {
         setSmartData({
-          stats: realStats.stats,
+          stats: realStatsData,
           dataSource: 'api',
           loading: false,
-          error: realStats.error,
+          error: realStatsError,
           quotaExceeded: false,
-          lastUpdated: realStats.lastFetch
+          lastUpdated: realStatsLastFetch
         });
         return;
       }
@@ -289,7 +299,17 @@ export const useSmartYouTubeStats = (channelId?: string) => {
         lastUpdated: null
       });
     }
-  }, [user, channelId, realStats, cachedStats, getTodaysQuotaUsage, shouldUseCachedData, getLatestHistoricalData, isDataFresh]);
+  }, [
+    user?.id, 
+    channelId,
+    cachedStatsData?.channel?.id,
+    cachedStatsData?.channel?.lastUpdated,
+    realStatsData?.subscriberCount,
+    isRealStatsConfigured,
+    realStatsError,
+    realStatsLastFetch?.getTime(),
+    supabase
+  ]);
 
   // Cargar datos al montar
   useEffect(() => {
@@ -303,14 +323,8 @@ export const useSmartYouTubeStats = (channelId?: string) => {
   }, [fetchSmartData]);
 
   const refresh = useCallback(() => {
-    if (smartData.dataSource === 'api' && realStats.refreshStats) {
-      realStats.refreshStats();
-    } else if (smartData.dataSource === 'cache' && cachedStats.refresh) {
-      cachedStats.refresh();
-    } else {
-      fetchSmartData();
-    }
-  }, [smartData.dataSource, realStats, cachedStats, fetchSmartData]);
+    fetchSmartData();
+  }, [fetchSmartData]);
 
   const getMotivationalMessage = useCallback(() => {
     if (!smartData.stats) {
@@ -346,7 +360,7 @@ export const useSmartYouTubeStats = (channelId?: string) => {
     refresh,
     getMotivationalMessage,
     getProgressColor,
-    isConfigured: () => realStats.isConfigured(),
+    isConfigured: isRealStatsConfigured,
     getSubscriberGrowthHistory: (days?: number) => getSubscriberGrowthHistory(channelId || '', days),
   };
 };
