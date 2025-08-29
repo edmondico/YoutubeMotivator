@@ -306,8 +306,7 @@ export const useSmartYouTubeStats = (channelId?: string) => {
     realStatsData,
     realStatsError,
     realStatsLastFetch,
-    shouldUseCachedData,
-    supabase
+    shouldUseCachedData
   ]);
 
   // Cargar datos al montar
