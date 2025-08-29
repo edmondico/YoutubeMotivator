@@ -171,9 +171,9 @@ export const UserProfileCard = ({ isDark }: { isDark: boolean }) => {
     {
       id: 'task_master',
       title: 'Maestro de Tareas',
-      unlocked: (ytData?.channel?.subscriberCount || 0) >= 11000,
-      progress: Math.min((ytData?.channel?.subscriberCount || 0), 11000),
-      maxProgress: 11000,
+      description: 'Completa 100 tareas',
+      icon: '✅',
+      unlocked: stats.completedTasks >= 100,
       progress: Math.min(stats.completedTasks, 100),
       maxProgress: 100,
       category: 'tasks'
