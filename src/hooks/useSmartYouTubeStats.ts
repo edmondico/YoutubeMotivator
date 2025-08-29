@@ -35,17 +35,14 @@ export const useSmartYouTubeStats = (channelId?: string) => {
     stats: realStatsData, 
     error: realStatsError, 
     lastFetch: realStatsLastFetch, 
-    isConfigured: isRealStatsConfigured,
-    refreshStats 
+    isConfigured: isRealStatsConfigured
   } = useRealYouTubeStats();
   const { 
-    data: cachedStatsData, 
-    refresh: refreshCachedStats 
+    data: cachedStatsData
   } = useCachedYouTubeStats(channelId);
 
   const { 
     getSubscriberGrowthHistory, 
-    getTodaysQuotaUsage,
     shouldUseCachedData 
   } = useYouTubeDataPersistence();
 
@@ -288,26 +285,28 @@ export const useSmartYouTubeStats = (channelId?: string) => {
         lastUpdated: null
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching smart data:', error);
       setSmartData({
         stats: null,
         dataSource: 'cache',
         loading: false,
-        error: error.message || 'Error obteniendo datos',
+        error: error instanceof Error ? error.message : 'Error obteniendo datos',
         quotaExceeded: false,
         lastUpdated: null
       });
     }
   }, [
-    user?.id, 
+    user,
     channelId,
-    cachedStatsData?.channel?.id,
-    cachedStatsData?.channel?.lastUpdated,
-    realStatsData?.subscriberCount,
+    cachedStatsData,
+    getLatestHistoricalData,
+    isDataFresh,
     isRealStatsConfigured,
+    realStatsData,
     realStatsError,
-    realStatsLastFetch?.getTime(),
+    realStatsLastFetch,
+    shouldUseCachedData,
     supabase
   ]);
 
