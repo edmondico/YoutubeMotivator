@@ -171,9 +171,9 @@ export const UserProfileCard = ({ isDark }: { isDark: boolean }) => {
     {
       id: 'task_master',
       title: 'Maestro de Tareas',
-      description: 'Completa 100 tareas',
-      icon: '✅',
-      unlocked: stats.completedTasks >= 100,
+      unlocked: (ytData?.channel?.subscriberCount || 0) >= 11000,
+      progress: Math.min((ytData?.channel?.subscriberCount || 0), 11000),
+      maxProgress: 11000,
       progress: Math.min(stats.completedTasks, 100),
       maxProgress: 100,
       category: 'tasks'
@@ -219,11 +219,11 @@ export const UserProfileCard = ({ isDark }: { isDark: boolean }) => {
     {
       id: 'subscriber_milestone',
       title: 'Hito de Suscriptores',
-      description: 'Alcanza 1000 suscriptores',
+      description: 'Alcanza 11,000 suscriptores',
       icon: '👥',
-      unlocked: (ytData?.channel?.subscriberCount || 0) >= 1000,
-      progress: Math.min((ytData?.channel?.subscriberCount || 0), 1000),
-      maxProgress: 1000,
+      unlocked: (ytData?.channel?.subscriberCount || 0) >= 11000,
+      progress: Math.min((ytData?.channel?.subscriberCount || 0), 11000),
+      maxProgress: 11000,
       category: 'social'
     },
     {
