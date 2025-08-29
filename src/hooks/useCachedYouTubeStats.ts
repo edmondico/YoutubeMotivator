@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useAuth } from '@/components/AuthProvider';
 import { YouTubeStats } from '@/types';
+import { useYouTubeDataPersistence } from './useYouTubeDataPersistence';
 
 interface CachedYouTubeData {
   channel: {
@@ -42,14 +43,30 @@ export const useCachedYouTubeStats = (channelId?: string) => {
 
   const { user } = useAuth();
   const supabase = createClientComponentClient();
+  const { 
+    saveDailyStats, 
+    trackAPIUsage, 
+    checkAndSaveMilestones,
+    shouldUseCachedData,
+    getTodaysQuotaUsage
+  } = useYouTubeDataPersistence();
 
-  // Check if we should make an API call (max once per hour)
-  const shouldCallApi = (lastUpdated: string | null) => {
+  // Check if we should make an API call (max once per 2 hours, but also consider quota)
+  const shouldCallApi = async (lastUpdated: string | null) => {
     if (!lastUpdated) return true;
+    
+    // Check if we're close to quota limit
+    const useCache = await shouldUseCachedData();
+    if (useCache) {
+      console.log('Using cached data due to quota limitations');
+      setQuotaExceeded(true);
+      return false;
+    }
+    
     const lastCall = new Date(lastUpdated);
     const now = new Date();
     const hoursSinceLastCall = (now.getTime() - lastCall.getTime()) / (1000 * 60 * 60);
-    return hoursSinceLastCall >= 1; // Only call API once per hour
+    return hoursSinceLastCall >= 2; // Only call API once every 2 hours
   };
 
   const fetchFromCache = async () => {
@@ -183,6 +200,63 @@ export const useCachedYouTubeStats = (channelId?: string) => {
       // Cache the results
       await cacheResults(channelResult, videos);
 
+      // Track API usage
+      await trackAPIUsage(100, 3); // Approximate quota usage for channel + videos + stats calls
+
+      // Save daily stats for historical tracking
+      const today = new Date().toISOString().split('T')[0];
+      await saveDailyStats({
+        channelId: channel.id,
+        subscriberCount: channelResult.subscriberCount,
+        videoCount: channelResult.videoCount,
+        totalViews: channelResult.viewCount,
+        date: today,
+        videos: videos
+      });
+
+      // Check for milestones (every 1000 subs, 100 videos, 1M views)
+      const milestones = [];
+      const subMilestones = [1000, 5000, 10000, 50000, 100000, 500000, 1000000];
+      const viewMilestones = [1000000, 5000000, 10000000, 50000000, 100000000];
+      const videoMilestones = [10, 50, 100, 500, 1000];
+
+      for (const milestone of subMilestones) {
+        if (channelResult.subscriberCount >= milestone) {
+          milestones.push({
+            type: 'subscribers' as const,
+            value: milestone,
+            previousValue: 0,
+            channelId: channel.id
+          });
+        }
+      }
+
+      for (const milestone of viewMilestones) {
+        if (channelResult.viewCount >= milestone) {
+          milestones.push({
+            type: 'views' as const,
+            value: milestone,
+            previousValue: 0,
+            channelId: channel.id
+          });
+        }
+      }
+
+      for (const milestone of videoMilestones) {
+        if (channelResult.videoCount >= milestone) {
+          milestones.push({
+            type: 'videos' as const,
+            value: milestone,
+            previousValue: 0,
+            channelId: channel.id
+          });
+        }
+      }
+
+      if (milestones.length > 0) {
+        await checkAndSaveMilestones(milestones);
+      }
+
       return {
         channel: channelResult,
         videos,
@@ -253,7 +327,7 @@ export const useCachedYouTubeStats = (channelId?: string) => {
           setData(cachedData);
 
           // Check if we need to refresh from API
-          if (shouldCallApi(cachedData.lastApiCall)) {
+          if (await shouldCallApi(cachedData.lastApiCall)) {
             try {
               const freshData = await fetchFromYouTubeAPI();
               if (freshData) {

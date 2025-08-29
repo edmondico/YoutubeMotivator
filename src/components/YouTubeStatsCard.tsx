@@ -1,43 +1,36 @@
 'use client';
 
-import { useCachedYouTubeStats } from '@/hooks/useCachedYouTubeStats';
+import { useSmartYouTubeStats } from '@/hooks/useSmartYouTubeStats';
 import { useWeeklyVideoTracker } from '@/hooks/useWeeklyVideoTracker';
 import { useAppConfig } from '@/hooks/useAppConfig';
-import { RefreshCw, Users, Calendar, TrendingUp, Eye, Wifi, WifiOff, Check, Database, Clock } from 'lucide-react';
+import { RefreshCw, Users, Calendar, TrendingUp, Eye, Wifi, WifiOff, Check, Database, Clock, Activity, Server } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
   const { config } = useAppConfig();
-  const { data, loading, error, quotaExceeded, refresh } = useCachedYouTubeStats(config.channelId);
+  const smartStats = useSmartYouTubeStats(config.channelId);
   const { weeklyStats } = useWeeklyVideoTracker();
+
+  const { stats, dataSource, loading, error, quotaExceeded, lastUpdated, refresh, getMotivationalMessage, getProgressColor } = smartStats;
 
   const weeklyGoal = config.goals.videosPerWeek;
   const videosThisWeek = weeklyStats.videosThisWeek;
   const weeklyProgress = Math.min((videosThisWeek / weeklyGoal) * 100, 100);
 
-  const getMotivationalMessage = () => {
-    if (!data.channel) return "¡Configura tu canal para ver estadísticas!";
-    
-    const daysSinceLastVideo = data.videos.length > 0 ? 
-      Math.floor((new Date().getTime() - new Date(data.videos[0].publishedAt).getTime()) / (1000 * 60 * 60 * 24)) : 30;
-    
-    if (daysSinceLastVideo === 0) return "¡Acabas de subir un video! 🎉";
-    if (daysSinceLastVideo === 1) return "¡Tu último video fue ayer! 💪";
-    if (daysSinceLastVideo < 3) return "¡Excelente constancia! 🔥";
-    if (daysSinceLastVideo < 7) return "Considera subir un nuevo video pronto 📹";
-    return "¡Es hora de crear nuevo contenido! 🚀";
-  };
-
-  const getProgressColor = () => {
-    if (!data.channel) return isDark ? 'text-gray-400' : 'text-gray-600';
-    const daysSinceLastVideo = data.videos.length > 0 ? 
-      Math.floor((new Date().getTime() - new Date(data.videos[0].publishedAt).getTime()) / (1000 * 60 * 60 * 24)) : 30;
-    
-    if (daysSinceLastVideo < 3) return 'text-green-600';
-    if (daysSinceLastVideo < 7) return 'text-yellow-600';
-    return 'text-red-600';
+  // Get data source icon and label
+  const getDataSourceInfo = () => {
+    switch (dataSource) {
+      case 'api':
+        return { icon: Wifi, label: 'API activa', color: 'text-green-500' };
+      case 'cache':
+        return { icon: Database, label: 'Cache', color: 'text-blue-500' };
+      case 'historical':
+        return { icon: Server, label: 'Histórico', color: 'text-purple-500' };
+      default:
+        return { icon: WifiOff, label: 'Sin datos', color: 'text-gray-500' };
+    }
   };
 
   const cardBaseClass = `rounded-xl p-6 border-2 transition-colors duration-300`;
@@ -66,37 +59,35 @@ export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
     );
   }
 
-  if (loading && !data.channel) {
+  if (loading && !stats) {
     return (
       <div className={`${cardBaseClass} ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200'} flex items-center justify-center`}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-3"></div>
           <p className={textSecondary}>Obteniendo datos de YouTube...</p>
           <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-500'} mt-1`}>
-            {quotaExceeded ? 'Cargando desde caché...' : 'Esto puede tomar unos segundos'}
+            {quotaExceeded ? 'Cargando datos alternativos...' : 'Esto puede tomar unos segundos'}
           </p>
         </div>
       </div>
     );
   }
 
-  if (error && !data.channel) {
+  // Error state - only show if no stats at all
+  if (error && !stats) {
     return (
       <div className={`${cardBaseClass} ${isDark ? 'bg-red-900 border-red-700' : 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'}`}>
         <div className="text-center">
           <span className="text-4xl mb-4 block">❌</span>
           <h2 className={`text-xl font-bold ${isDark ? 'text-red-300' : 'text-red-800'} mb-2`}>
-            {quotaExceeded ? 'Cuota API Excedida' : 'Error de Configuración'}
+            Error de Configuración
           </h2>
           <p className={`${isDark ? 'text-red-400' : 'text-red-600'} mb-4 text-sm`}>
-            {quotaExceeded ? 'Límite diario de YouTube API alcanzado' : error}
+            {error}
           </p>
           <div className={`${isDark ? 'bg-yellow-900 border-yellow-700' : 'bg-yellow-50 border-yellow-200'} border rounded-lg p-3`}>
             <p className={`text-sm ${isDark ? 'text-yellow-300' : 'text-yellow-700'}`}>
-              {quotaExceeded ? 
-                'Los datos se actualizarán automáticamente mañana. Se mostrarán datos guardados si están disponibles.' : 
-                'Revisa tu configuración en Configuración → Canal YouTube'
-              }
+              Revisa tu configuración en Configuración → Canal YouTube
             </p>
           </div>
         </div>
@@ -104,14 +95,15 @@ export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
     );
   }
 
-  if (!data.channel) {
+  // No stats available at all
+  if (!stats) {
     return (
       <div className={`${cardBaseClass} ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200'} flex items-center justify-center`}>
         <div className="text-center">
           <span className="text-4xl mb-4 block">📺</span>
           <p className={textSecondary}>No hay datos disponibles</p>
           <p className={`text-xs ${textSecondary} mt-1`}>
-            {quotaExceeded ? 'Cuota API excedida - datos disponibles mañana' : 'Configura tu canal en Configuración'}
+            Configura tu canal en Configuración
           </p>
         </div>
       </div>
@@ -128,29 +120,22 @@ export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
           <span className="text-2xl">📺</span>
           <h2 className={`text-xl font-bold ${textPrimary}`}>Canal YouTube</h2>
           <div className="flex items-center gap-1 text-xs">
-            {data.isFromCache ? (
-              <>
-                <Database className="w-3 h-3 text-blue-500" />
-                <span className="text-blue-600 font-medium">Cache</span>
-              </>
-            ) : quotaExceeded ? (
-              <>
-                <WifiOff className="w-3 h-3 text-orange-500" />
-                <span className="text-orange-600 font-medium">Cuota excedida</span>
-              </>
-            ) : (
-              <>
-                <Wifi className="w-3 h-3 text-green-500" />
-                <span className="text-green-600 font-medium">API activa</span>
-              </>
-            )}
+            {(() => {
+              const { icon: Icon, label, color } = getDataSourceInfo();
+              return (
+                <>
+                  <Icon className={`w-3 h-3 ${color}`} />
+                  <span className={`font-medium ${color.replace('text-', 'text-')}`}>{label}</span>
+                </>
+              );
+            })()}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {data.lastApiCall && (
+          {lastUpdated && (
             <span className={`text-xs ${textSecondary} flex items-center gap-1`}>
               <Clock className="w-3 h-3" />
-              {format(new Date(data.lastApiCall), 'HH:mm')}
+              {format(lastUpdated, 'HH:mm')}
             </span>
           )}
           <button
@@ -164,18 +149,22 @@ export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
         </div>
       </div>
 
-      {(error || quotaExceeded) && (
+      {(error || quotaExceeded || dataSource !== 'api') && (
         <div className={`${isDark ? 
-          (quotaExceeded ? 'bg-orange-900 border-orange-700' : 'bg-red-900 border-red-700') : 
-          (quotaExceeded ? 'bg-orange-50 border-orange-200' : 'bg-red-50 border-red-200')
+          (quotaExceeded ? 'bg-orange-900 border-orange-700' : 'bg-purple-900 border-purple-700') : 
+          (quotaExceeded ? 'bg-orange-50 border-orange-200' : 'bg-purple-50 border-purple-200')
         } border rounded-lg p-3 mb-4`}>
           <p className={`text-sm ${isDark ? 
-            (quotaExceeded ? 'text-orange-300' : 'text-red-300') : 
-            (quotaExceeded ? 'text-orange-800' : 'text-red-800')
+            (quotaExceeded ? 'text-orange-300' : 'text-purple-300') : 
+            (quotaExceeded ? 'text-orange-800' : 'text-purple-800')
           }`}>
             {quotaExceeded ? 
-              '🔄 Cuota API excedida - Mostrando datos guardados' : 
-              `⚠️ Error obteniendo datos: ${error}`
+              '🔄 Cuota API excedida - Mostrando datos guardados' :
+              dataSource === 'historical' ?
+              '📈 Usando datos históricos guardados' :
+              dataSource === 'cache' ?
+              '💾 Mostrando datos desde caché (actualizados hace menos de 2 horas)' :
+              error ? `⚠️ ${error}` : '📊 Usando datos alternativos'
             }
           </p>
         </div>
@@ -183,17 +172,15 @@ export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
 
       {/* Mensaje motivacional principal */}
       <div className={`text-center p-4 rounded-lg ${bgInner} mb-6 border-l-4 ${
-        data.videos.length > 0 ? 
-          (Math.floor((new Date().getTime() - new Date(data.videos[0].publishedAt).getTime()) / (1000 * 60 * 60 * 24)) < 3 ? 'border-green-500' : 
-          Math.floor((new Date().getTime() - new Date(data.videos[0].publishedAt).getTime()) / (1000 * 60 * 60 * 24)) < 7 ? 'border-yellow-500' : 'border-red-500') :
-          'border-gray-500'
+        stats.daysSinceLastVideo < 3 ? 'border-green-500' : 
+        stats.daysSinceLastVideo < 7 ? 'border-yellow-500' : 'border-red-500'
       }`}>
         <p className={`font-semibold ${getProgressColor()}`}>
           {getMotivationalMessage()}
         </p>
-        {data.videos.length > 0 && (
+        {stats.lastVideoDate && (
           <div className={`mt-2 text-sm ${textSecondary}`}>
-            <span>Último video: {format(new Date(data.videos[0].publishedAt), "dd 'de' MMMM", { locale: es })}</span>
+            <span>Último video: {format(stats.lastVideoDate, "dd 'de' MMMM", { locale: es })}</span>
           </div>
         )}
       </div>
@@ -209,7 +196,7 @@ export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
             <span className={`text-sm font-medium ${textSecondary}`}>Suscriptores</span>
           </div>
           <div className={`text-2xl font-bold ${textPrimary}`}>
-            {data.channel.subscriberCount.toLocaleString()}
+            {stats.subscriberCount.toLocaleString()}
           </div>
           <div className="text-xs text-gray-500">
             Total
@@ -225,10 +212,7 @@ export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
             <span className={`text-sm font-medium ${textSecondary}`}>Días sin video</span>
           </div>
           <div className={`text-2xl font-bold ${getProgressColor()}`}>
-            {data.videos.length > 0 ? 
-              Math.floor((new Date().getTime() - new Date(data.videos[0].publishedAt).getTime()) / (1000 * 60 * 60 * 24)) : 
-              '?'
-            }
+            {stats.daysSinceLastVideo}
           </div>
           <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
             días
@@ -244,7 +228,7 @@ export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
             <span className={`text-sm font-medium ${textSecondary}`}>Videos totales</span>
           </div>
           <div className="text-2xl font-bold text-green-600">
-            {data.channel.videoCount}
+            {stats.totalViews ? Math.floor(stats.totalViews / stats.averageViewsPerVideo) : 0}
           </div>
           <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
             publicados
@@ -260,7 +244,7 @@ export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
             <span className={`text-sm font-medium ${textSecondary}`}>Vistas totales</span>
           </div>
           <div className="text-2xl font-bold text-blue-600">
-            {(data.channel.viewCount / 1000000).toFixed(1)}M
+            {(stats.totalViews / 1000000).toFixed(1)}M
           </div>
           <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
             visualizaciones
