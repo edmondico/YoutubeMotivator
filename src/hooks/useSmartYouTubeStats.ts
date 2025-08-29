@@ -28,7 +28,7 @@ export const useSmartYouTubeStats = (channelId?: string) => {
   });
 
   const { user } = useAuth();
-  const supabase = createClient();
+  const supabase = createClientComponentClient();
   const lastFetchRef = useRef<Date | null>(null);
   
   // Hooks para diferentes fuentes de datos

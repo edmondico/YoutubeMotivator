@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/utils/supabase/client';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useAuth } from '@/components/AuthProvider';
 
 export interface IdeaGroup {
