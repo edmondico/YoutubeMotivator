@@ -42,7 +42,10 @@ export const useVideoIdeas = () => {
 
   // Initialize default groups if none exist
   const initializeDefaultGroups = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setError('Debes iniciar sesión para crear grupos de ideas.');
+      return;
+    }
 
     try {
       const { data: existingGroups } = await supabase
@@ -66,7 +69,12 @@ export const useVideoIdeas = () => {
             });
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Error al inicializar grupos de ideas');
+      }
       console.error('Error initializing default groups:', error);
     }
   }, [user, supabase]);
@@ -84,8 +92,12 @@ export const useVideoIdeas = () => {
 
       if (error) throw error;
       setGroups(data || []);
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Error al cargar grupos de ideas');
+      }
     }
   }, [user, supabase]);
 
@@ -102,8 +114,12 @@ export const useVideoIdeas = () => {
 
       if (error) throw error;
       setIdeas(data || []);
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Error al cargar ideas');
+      }
     }
   }, [user, supabase]);
 
@@ -126,7 +142,10 @@ export const useVideoIdeas = () => {
 
   // Group management
   const addGroup = useCallback(async (name: string, description?: string, color: string = '#3B82F6') => {
-    if (!user) return null;
+    if (!user) {
+      setError('Debes iniciar sesión para crear grupos de ideas.');
+      return null;
+    }
 
     try {
       const maxOrder = Math.max(...groups.map(g => g.sort_order), 0);
@@ -147,8 +166,12 @@ export const useVideoIdeas = () => {
       
       setGroups(prev => [...prev, data].sort((a, b) => a.sort_order - b.sort_order));
       return data;
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Error al crear grupo de ideas');
+      }
       return null;
     }
   }, [user, groups, supabase]);
@@ -170,8 +193,12 @@ export const useVideoIdeas = () => {
           .sort((a, b) => a.sort_order - b.sort_order)
       );
       return true;
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Error al actualizar grupo de ideas');
+      }
       return false;
     }
   }, [user, supabase]);
@@ -199,8 +226,12 @@ export const useVideoIdeas = () => {
       setGroups(prev => prev.filter(g => g.id !== id));
       setIdeas(prev => prev.filter(i => i.group_id !== id));
       return true;
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Error al eliminar grupo de ideas');
+      }
       return false;
     }
   }, [user, supabase]);
@@ -234,8 +265,12 @@ export const useVideoIdeas = () => {
         return a.sort_order - b.sort_order;
       }));
       return data;
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Error al crear idea');
+      }
       return null;
     }
   }, [user, ideas, supabase]);
@@ -254,8 +289,12 @@ export const useVideoIdeas = () => {
       
       setIdeas(prev => prev.map(i => i.id === id ? { ...i, ...updates } : i));
       return true;
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Error al actualizar idea');
+      }
       return false;
     }
   }, [user, supabase]);
@@ -274,8 +313,12 @@ export const useVideoIdeas = () => {
       
       setIdeas(prev => prev.filter(i => i.id !== id));
       return true;
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Error al eliminar idea');
+      }
       return false;
     }
   }, [user, supabase]);
@@ -309,8 +352,12 @@ export const useVideoIdeas = () => {
       );
       
       return true;
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Error al reordenar ideas');
+      }
       return false;
     }
   }, [user, supabase]);
