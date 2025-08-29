@@ -14,7 +14,13 @@ export const YouTubeStatsCard = ({ isDark }: { isDark: boolean }) => {
   const { weeklyStats } = useWeeklyVideoTracker();
 
   // Fallbacks seguros para todos los datos
-  const stats = smartStats.stats || {};
+  const stats = smartStats.stats || {
+    daysSinceLastVideo: 0,
+    lastVideoDate: null,
+    subscriberCount: 0,
+    totalViews: 0,
+    averageViewsPerVideo: 0,
+  };
   const dataSource = smartStats.dataSource || '';
   const loading = !!smartStats.loading;
   const error = smartStats.error || '';
